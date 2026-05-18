@@ -46,7 +46,9 @@ echo "CONFIG_PACKAGE_luci-theme-$WRT_THEME=y" >> ./.config
 
 #手动调整的插件
 if [ -n "$WRT_PACKAGE" ]; then
-	echo -e "$WRT_PACKAGE" >> ./.config
+	echo -e "$WRT_PACKAGE" \
+		| sed '/^[[:space:]]*$/d' \
+		| grep -E '^(CONFIG_[A-Z0-9_]+=.*|# CONFIG_[A-Z0-9_]+ is not set|#.*)$' >> ./.config || true
 fi
 
 #高通平台调整

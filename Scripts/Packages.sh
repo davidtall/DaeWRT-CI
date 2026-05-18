@@ -80,6 +80,9 @@ UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 UPDATE_PACKAGE "luci-app-daed" "QiuSimons/luci-app-daed" "kix"
 UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
 UPDATE_PACKAGE "luci-app-lucky" "sirpdboy/luci-app-lucky" "main"
+UPDATE_PACKAGE "luci-app-tinyfilemanager" "muink/luci-app-tinyfilemanager" "master"
+UPDATE_PACKAGE "natmapt" "muink/openwrt-natmapt" "master" "name"
+UPDATE_PACKAGE "luci-app-natmapt" "muink/luci-app-natmapt" "master"
 #更新软件包版本
 UPDATE_VERSION() {
 	local PKG_NAME=$1
@@ -138,6 +141,18 @@ sed -i 's|github.com/daeuniverse/quic-go|github.com/olicesx/quic-go|g' luci-app-
 
 sed -i 's|/run/i\\  procd_set_param|/procd_set_param command/i \\\tprocd_set_param|g' luci-app-daed/luci-app-daed/root/etc/init.d/luci_daed
 #cat luci-app-daed/daed/Makefile
+#更新 easytier 到 EasyTier/EasyTier 最新 prerelease
+if [ -f "./luci-app-easytier/version.mk" ]; then
+	ET_TAG=$(curl -sL "https://api.github.com/repos/EasyTier/EasyTier/releases" | jq -r 'map(select(.prerelease == true)) | first | .tag_name')
+	if [ -n "$ET_TAG" ]; then
+		ET_VER=$(echo $ET_TAG | sed 's/^v//')
+		sed -i "s/EASYTIER_VERSION=.*/EASYTIER_VERSION=$ET_VER/g" ./luci-app-easytier/version.mk
+		echo "easytier version updated to $ET_VER"
+	fi
+fi
+
+# sing-box 不再作为软件包更新；改由 workflow 下载 reF1nd 预编译二进制并注入 /usr/bin
+
 #修复libubox报错
 #sed -i '/include $(INCLUDE_DIR)\/cmake.mk/a PKG_BUILD_FLAGS:=no-werror' ../package/libs/libubox/Makefile
 #sed -i 's|TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include|& -Wno-error=format-nonliteral -Wno-format-nonliteral|' ../package/libs/libubox/Makefile
