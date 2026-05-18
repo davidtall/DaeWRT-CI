@@ -1,16 +1,23 @@
-#CMCC REDMI XIAOMI
+#设备平台
 CONFIG_TARGET_qualcommax=y
 CONFIG_TARGET_qualcommax_ipq807x=y
 CONFIG_TARGET_MULTI_PROFILE=y
 CONFIG_TARGET_PER_DEVICE_ROOTFS=y
 #设备列表
 CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_aliyun_ap8220=y
-CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_cmcc_rm2-6=y
-CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_redmi_ax6-stock=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_linksys_homewrk=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_linksys_mx4200v1=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_linksys_mx4200v2=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_linksys_mx4300=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_linksys_mx5300=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_linksys_mx8500=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_qnap_301w=y
 CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_redmi_ax6=y
-CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_xiaomi_ax3600-stock=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_redmi_ax6-stock=y
 CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_xiaomi_ax3600=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_xiaomi_ax3600-stock=y
 CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_xiaomi_ax9000=y
+CONFIG_TARGET_DEVICE_qualcommax_ipq807x_DEVICE_xiaomi_ax9000-stock=y
 
 #内核配置
 CONFIG_KERNEL_ARM_PMU=y
@@ -26,6 +33,14 @@ CONFIG_KERNEL_MEMCG_SWAP_ENABLED=y
 CONFIG_KERNEL_NET_CLS_CGROUP=y
 CONFIG_KERNEL_PERF_EVENTS=y
 # CONFIG_KERNEL_PREEMPT_RCU is not set
+
+#NSS配置
+CONFIG_FEED_nss_packages=n
+CONFIG_FEED_sqm_scripts_nss=n
+CONFIG_IPQ_MEM_PROFILE_1024=n
+CONFIG_IPQ_MEM_PROFILE_512=y
+CONFIG_ATH11K_MEM_PROFILE_1G=n
+CONFIG_ATH11K_MEM_PROFILE_512M=y
 
 #去除WIFI
 # CONFIG_DRIVER_11AC_SUPPORT is not set
@@ -49,16 +64,11 @@ CONFIG_KERNEL_PERF_EVENTS=y
 # CONFIG_PACKAGE_ath11k-firmware-ipq8074 is not set
 # CONFIG_PACKAGE_ath11k-firmware-qcn9074 is not set
 
-#NSS配置
-CONFIG_FEED_nss_packages=n
-CONFIG_FEED_sqm_scripts_nss=n
-CONFIG_IPQ_MEM_PROFILE_1024=n
-CONFIG_IPQ_MEM_PROFILE_512=y
-CONFIG_ATH11K_MEM_PROFILE_1G=n
-CONFIG_ATH11K_MEM_PROFILE_512M=y
-
 #ipq-wifi
 # CONFIG_PACKAGE_ipq-wifi-redmi_ax6-stock is not set
 # CONFIG_PACKAGE_ipq-wifi-redmi_ax6 is not set
 # CONFIG_PACKAGE_ipq-wifi-xiaomi_ax3600-stock is not set
 # CONFIG_PACKAGE_ipq-wifi-xiaomi_ax3600 is not set
+
+CONFIG_PACKAGE_sqm-scripts-nss=y
+CONFIG_PACKAGE_kmod-qca-nss-crypto=y

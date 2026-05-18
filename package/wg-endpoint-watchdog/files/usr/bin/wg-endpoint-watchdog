@@ -1,0 +1,80 @@
+#!/bin/sh
+
+TAG="wg-endpoint-watchdog"
+CONFIG_NAME="wg_endpoint_watchdog"
+FUNCTIONS_LIB="${WG_ENDPOINT_WATCHDOG_FUNCTIONS:-/lib/functions.sh}"
+REFRESH_BIN="${WG_ENDPOINT_REFRESH_BIN:-/usr/bin/wg-endpoint-refresh}"
+
+# shellcheck disable=SC1090
+. "$FUNCTIONS_LIB"
+
+log_msg() {
+	logger -t "$TAG" "$*"
+}
+
+is_uint() {
+	case "$1" in
+		''|*[!0-9]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+needs_refresh() {
+	latest_data="$1"
+	[ -n "$latest_data" ] || return 0
+
+	stale=1
+	while IFS=' ' read -r peer latest rest; do
+		[ -n "$peer" ] || continue
+
+		if ! is_uint "$latest" || [ "$latest" -eq 0 ]; then
+			stale=0
+			break
+		fi
+
+		age=$((now - latest))
+		if [ "$age" -gt "$max_handshake_age" ]; then
+			stale=0
+			break
+		fi
+	done <<EOF
+$latest_data
+EOF
+
+	return "$stale"
+}
+
+check_instance() {
+	section="$1"
+	config_get_bool enabled "$section" enabled 0
+	[ "$enabled" -eq 1 ] || return 0
+
+	config_get interface "$section" interface
+	if [ -z "$interface" ]; then
+		log_msg "skip instance=$section because interface is empty"
+		return 0
+	fi
+
+	config_get max_handshake_age "$section" max_handshake_age 600
+	if ! is_uint "$max_handshake_age"; then
+		max_handshake_age=600
+	fi
+
+	if ! command -v wg >/dev/null 2>&1; then
+		log_msg "skip watchdog because wg command is missing instance=$section"
+		return 0
+	fi
+
+	now="$(date +%s)"
+	latest_data="$(wg show "$interface" latest-handshakes 2>/dev/null || true)"
+
+	if needs_refresh "$latest_data"; then
+		log_msg "stale handshake instance=$section interface=$interface max_age=$max_handshake_age"
+		"$REFRESH_BIN" "$section" watchdog
+	else
+		log_msg "healthy handshake instance=$section interface=$interface"
+	fi
+}
+
+config_load "$CONFIG_NAME"
+config_foreach check_instance instance

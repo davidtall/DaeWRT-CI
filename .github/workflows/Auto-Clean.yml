@@ -1,3 +1,6 @@
+﻿# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
 name: Auto-Clean
 
 on:
@@ -6,24 +9,33 @@ on:
     - cron: 0 20 * * 0
   #手动清理
   workflow_dispatch:
-    inputs:
-      NUMBER:
-        default: '8'
-        required: false
-        type: string
-
 permissions: write-all
 
 jobs:
   auto_clean:
     runs-on: ubuntu-22.04
     steps:
-      - name: Delete old Releases and Workflows
+      # 只清理自动编译线的 release，手动 release 保留
+      - name: Delete auto-build releases only
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          TARGET_PREFIX='QCA-6.12-VIKINGYFY-AUTO-'
+
+          while IFS= read -r old_tag; do
+            [ -n "$old_tag" ] || continue
+            case "$old_tag" in
+              "${TARGET_PREFIX}"*)
+                echo "Deleting auto-build release: $old_tag"
+                gh release delete -R "$GITHUB_REPOSITORY" "$old_tag" --yes --cleanup-tag
+                ;;
+            esac
+          done < <(gh release list -R "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName')
+
+      - name: Delete old workflow runs
         uses: ophub/delete-releases-workflows@main
         with:
           gh_token: ${{secrets.GITHUB_TOKEN}}
-          delete_releases: true
-          releases_keep_latest: ${{inputs.NUMBER || '0'}}
-          delete_tags: true
+          delete_releases: false
           delete_workflows: true
           workflows_keep_day: 0

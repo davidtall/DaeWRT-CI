@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+[ -f /tmp/uv-env.sh ] && . /tmp/uv-env.sh
+
+uv --version
+python3 --version
+rm -rf /tmp/uv-smoke-venv /tmp/uv-managed-smoke
+python3 -m venv /tmp/uv-smoke-venv
+uv venv --python 3.10 /tmp/uv-managed-smoke

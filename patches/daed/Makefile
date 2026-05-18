@@ -97,12 +97,15 @@ endef
 NODE_VERSION:=v24.12.0
 NODE_DIST:=node-$(NODE_VERSION)-linux-x64
 NODE_URL:=https://nodejs.org/dist/$(NODE_VERSION)/$(NODE_DIST).tar.xz
+DAED_HOST_GO=$(firstword $(wildcard $(STAGING_DIR_HOSTPKG)/lib/go-*/bin/go $(STAGING_DIR_HOSTPKG)/bin/go))
 
 define Build/Prepare
 	( \
+		set -e ; \
 		rm -rf $(DAED_BUILD_DIR) ; \
 		mkdir -p $(DAED_BUILD_DIR) ; \
 		$(TAR) --strip-components=1 -C $(DAED_BUILD_DIR) -xzf $(DL_DIR)/$(PKG_NAME)-$(PKG_VERSION).tar.gz ; \
+		rm -rf $(PKG_BUILD_DIR) ; \
 		git clone https://github.com/daeuniverse/dae-wing $(PKG_BUILD_DIR) && \
 			git -C $(PKG_BUILD_DIR) checkout $(WING_HASH_SHORT) ; \
 		rm -rf $(PKG_BUILD_DIR)/dae-core ; \
@@ -113,28 +116,40 @@ define Build/Prepare
 		rm -rf $(DAED_BUILD_DIR)/quic-go ; \
 		git clone --depth=1 -b perf/node-pooling-v2 https://github.com/olicesx/quic-go.git $(DAED_BUILD_DIR)/quic-go ; \
 		pushd $(PKG_BUILD_DIR)/dae-core ; \
+			if ! grep -q "currentRuntimeStatsStore" control/runtime_stats.go ; then \
+				wget -qO - https://github.com/QiuSimons/luci-app-daed/raw/refs/heads/kix/patchset/0001-fix-runtime-stats.patch | patch -p2 --forward --batch ; \
+			fi ; \
 			git submodule update --init ; \
-			go get -u=patch ; \
-			go mod tidy ; \
 		popd ; \
 		pushd $(PKG_BUILD_DIR) ; \
-			go mod edit -replace github.com/daeuniverse/outbound=../outbound ; \
-			go mod edit -replace github.com/olicesx/quic-go=../quic-go ; \
-			go get -u=patch ; \
-			go mod tidy ; \
 			wget -qO default.pgo "https://github.com/QiuSimons/luci-app-dae/raw/refs/heads/kix/dae/pprof/default.pgo" ; \
 		popd ; \
 		mkdir -p $(DAED_BUILD_DIR)/.node_tmp/config ; \
 		wget -qO - "$(NODE_URL)" | tar -xJ -C $(DAED_BUILD_DIR)/.node_tmp --strip-components=1 ; \
 		export PATH="$(DAED_BUILD_DIR)/.node_tmp/bin:$$$$PATH" ; \
 		export XDG_CONFIG_HOME="$(DAED_BUILD_DIR)/.node_tmp/config" ; \
+		export HUSKY=0 ; \
 		npm install -g pnpm ; \
 		pushd $(DAED_BUILD_DIR) ; \
 			pnpm install --no-frozen-lockfile ; \
-			pnpm build --filter daed ; \
+			pnpm --filter daed... build ; \
 		popd ; \
+		if [ ! -d "$(DAED_BUILD_DIR)/apps/web/dist" ]; then \
+			echo "ERROR: daed web dist directory is missing at $(DAED_BUILD_DIR)/apps/web/dist" ; \
+			exit 1 ; \
+		fi ; \
+		find "$(DAED_BUILD_DIR)/apps/web/dist" -type f -print > "$(DAED_BUILD_DIR)/.web-dist-files" ; \
+		if [ ! -s "$(DAED_BUILD_DIR)/.web-dist-files" ]; then \
+			echo "ERROR: daed web build completed without dist files at $(DAED_BUILD_DIR)/apps/web/dist" ; \
+			find "$(DAED_BUILD_DIR)" -path "*/apps/web/dist/*" -type f -print > "$(DAED_BUILD_DIR)/.web-dist-diagnostics" ; \
+			sed -n '1,20p' "$(DAED_BUILD_DIR)/.web-dist-diagnostics" ; \
+			exit 1 ; \
+		fi ; \
+		rm -rf $(PKG_BUILD_DIR)/webrender/web ; \
 		mkdir -p $(PKG_BUILD_DIR)/webrender/web ; \
-		cp -rf $(DAED_BUILD_DIR)/apps/web/dist/* $(PKG_BUILD_DIR)/webrender/web ; \
+		cp -a $(DAED_BUILD_DIR)/apps/web/dist/. $(PKG_BUILD_DIR)/webrender/web/ ; \
+		find $(PKG_BUILD_DIR)/webrender/web -type f -print > "$(DAED_BUILD_DIR)/.webrender-files" ; \
+		test -s "$(DAED_BUILD_DIR)/.webrender-files" || { echo "ERROR: daed web assets were not generated"; exit 1; } ; \
 		find $(PKG_BUILD_DIR)/webrender/web -name "*.map" -type f -delete ; \
 		find $(PKG_BUILD_DIR)/webrender/web -type f -size +4k ! -name "*.gz" ! -name "*.woff"  ! -name "*.woff2" -exec sh -c '\
 			gzip -9 -k "{}"; \
@@ -156,24 +171,32 @@ DAE_CFLAGS:= \
 
 define Build/Compile
 	( \
-		pushd $(PKG_BUILD_DIR) ; \
 		export \
 		$(GO_GENERAL_BUILD_CONFIG_VARS) \
 		$(GO_PKG_BUILD_CONFIG_VARS) \
 		$(GO_PKG_BUILD_VARS) ; \
-		go generate ./... ; \
-		cd dae-core ; \
-		export \
-		BPF_CLANG="$(CLANG)" \
-		BPF_STRIP_FLAG="-strip=$(LLVM_STRIP)" \
-		BPF_CFLAGS="$(DAE_CFLAGS)" \
-		BPF_TARGET="bpfel,bpfeb" \
-		BPF_TRACE_TARGET="$(GO_ARCH)" ; \
-		go generate ./control/control.go ; \
-		go generate ./trace/trace.go ; \
+		pushd $(PKG_BUILD_DIR) ; \
+			pushd $(PKG_BUILD_DIR)/dae-core ; \
+				$(DAED_HOST_GO) get -u=patch ; \
+				$(DAED_HOST_GO) mod tidy ; \
+			popd ; \
+			$(DAED_HOST_GO) mod edit -replace github.com/daeuniverse/outbound=../outbound ; \
+			$(DAED_HOST_GO) mod edit -replace github.com/olicesx/quic-go=../quic-go ; \
+			$(DAED_HOST_GO) get -u=patch ; \
+			$(DAED_HOST_GO) mod tidy ; \
+			$(DAED_HOST_GO) generate ./... ; \
+			cd dae-core ; \
+			export \
+			BPF_CLANG="$(CLANG)" \
+			BPF_STRIP_FLAG="-strip=$(LLVM_STRIP)" \
+			BPF_CFLAGS="$(DAE_CFLAGS)" \
+			BPF_TARGET="bpfel,bpfeb" \
+			BPF_TRACE_TARGET="$(GO_ARCH)" ; \
+			$(DAED_HOST_GO) generate ./control/control.go ; \
+			$(DAED_HOST_GO) generate ./trace/trace.go ; \
 		popd ; \
+		$(call GoPackage/Build/Compile) ; \
 	)
-	$(call GoPackage/Build/Compile)
 endef
 
 define Package/daed/install

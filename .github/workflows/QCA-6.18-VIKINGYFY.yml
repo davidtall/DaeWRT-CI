@@ -32,8 +32,8 @@ jobs:
       fail-fast: false
       #max-parallel: 3
       matrix:
-#        CONFIG: [IPQ807X-NOWIFI, IPQ807X-WIFI,IPQ60XX-NOWIFI, IPQ60XX-WIFI]
-        CONFIG: [IPQ60XX-NOWIFI, IPQ60XX-WIFI]
+#        CONFIG: [IPQ807X-WIFI-NO, IPQ807X-WIFI-YES,IPQ60XX-WIFI-NO, IPQ60XX-WIFI-YES]
+        CONFIG: [IPQ60XX-WIFI-NO, IPQ60XX-WIFI-YES]
         SOURCE: [VIKINGYFY/immortalwrt]
 #        SOURCE: [davidtall/immortalwrt]
         BRANCH: [main]
@@ -66,4 +66,6 @@ jobs:
       #仅输出配置文件
       WRT_TEST: ${{inputs.TEST}}
 
-      CI_NAME: ${{github.workflow}}
+      CI_NAME: ${{ contains(fromJSON('["schedule","workflow_run"]'), github.event_name) && format('{0}-AUTO', github.workflow) || format('{0}-MANUAL', github.workflow) }}
+      RUNNER_LABELS: '["ubuntu-latest"]'
+      JOB_TIMEOUT_MINUTES: 360

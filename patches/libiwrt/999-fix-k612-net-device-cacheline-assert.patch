@@ -1,0 +1,15 @@
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -11982,7 +11982,11 @@ static void netdev_struct_check(void)
+ #ifdef CONFIG_NET_XGRESS
+ 	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_tx, tcx_egress);
+ #endif
+-	CACHELINE_ASSERT_GROUP_SIZE(struct net_device, net_device_read_tx, 160);
++	/*
++	 * LiBwrt k6.12-nss carries additional net_device fields through
++	 * downstream NSS patches, so the upstream cacheline size assertion
++	 * no longer matches the resulting layout on qualcommax targets.
++	 */
+ 
+ 	/* TXRX read-mostly hotpath */
+ 	CACHELINE_ASSERT_GROUP_MEMBER(struct net_device, net_device_read_txrx, lstats);

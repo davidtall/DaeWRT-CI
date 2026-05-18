@@ -1,0 +1,151 @@
+#!/bin/sh
+
+TAG="wg-endpoint-watchdog"
+CONFIG_NAME="wg_endpoint_watchdog"
+FUNCTIONS_LIB="${WG_ENDPOINT_WATCHDOG_FUNCTIONS:-/lib/functions.sh}"
+INIT_DIR="${WG_ENDPOINT_WATCHDOG_INIT_DIR:-/etc/init.d}"
+
+# shellcheck disable=SC1090
+. "$FUNCTIONS_LIB"
+
+log_msg() {
+	logger -t "$TAG" "$*"
+}
+
+is_uint() {
+	case "$1" in
+		''|*[!0-9]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+restart_init_service() {
+	service_name="$1"
+	[ -n "$service_name" ] || return 0
+
+	case "$service_name" in
+		*[!A-Za-z0-9_.-]*)
+			log_msg "skip invalid service name for instance=$section: $service_name"
+			return 0
+			;;
+	esac
+
+	service_path="$INIT_DIR/$service_name"
+	if [ ! -x "$service_path" ]; then
+		log_msg "skip missing service for instance=$section: $service_name"
+		return 0
+	fi
+
+	log_msg "restart service=$service_name instance=$section reason=$reason"
+	"$service_path" restart >/dev/null 2>&1 || log_msg "service restart failed: $service_name"
+}
+
+run_hook() {
+	hook_path="$1"
+	[ -n "$hook_path" ] || return 0
+
+	if [ ! -x "$hook_path" ]; then
+		log_msg "skip non-executable hook instance=$section hook=$hook_path"
+		return 0
+	fi
+
+	log_msg "run hook instance=$section hook=$hook_path reason=$reason"
+	"$hook_path" "$section" "$reason" "$interface" || log_msg "hook failed instance=$section hook=$hook_path"
+}
+
+ip_rule_exists() {
+	rule_port="$1"
+
+	ip rule show 2>/dev/null |
+		grep -Eq "(^|[[:space:]])(1000:|pref 1000).*ipproto udp.*sport ${rule_port}.*lookup main"
+}
+
+ensure_proxy_bypass_rule() {
+	[ "$proxy_bypass" -eq 1 ] || return 0
+	[ -n "$proxy_bypass_udp_sport" ] || return 0
+
+	if ! is_uint "$proxy_bypass_udp_sport"; then
+		log_msg "skip invalid udp source port instance=$section port=$proxy_bypass_udp_sport"
+		return 0
+	fi
+
+	if ! command -v ip >/dev/null 2>&1; then
+		log_msg "skip proxy bypass rule because ip command is missing"
+		return 0
+	fi
+
+	if ip_rule_exists "$proxy_bypass_udp_sport"; then
+		log_msg "proxy bypass rule already exists instance=$section port=$proxy_bypass_udp_sport"
+		return 0
+	fi
+
+	ip rule add pref 1000 ipproto udp sport "$proxy_bypass_udp_sport" lookup main ||
+		log_msg "failed to add proxy bypass rule instance=$section port=$proxy_bypass_udp_sport"
+}
+
+log_wg_state() {
+	if ! command -v wg >/dev/null 2>&1; then
+		log_msg "skip WireGuard state logging because wg command is missing"
+		return 0
+	fi
+
+	wg show "$interface" endpoints 2>&1 | logger -t "$TAG"
+	wg show "$interface" latest-handshakes 2>&1 | logger -t "$TAG"
+}
+
+refresh_instance() {
+	section="$1"
+	config_get_bool enabled "$section" enabled 0
+	[ "$enabled" -eq 1 ] || return 0
+
+	config_get interface "$section" interface
+	if [ -z "$interface" ]; then
+		log_msg "skip instance=$section because interface is empty"
+		return 0
+	fi
+
+	config_get_bool refresh_dnsmasq "$section" refresh_dnsmasq 1
+	config_get refresh_ddns_service "$section" refresh_ddns_service
+	config_get endpoint_host_option "$section" endpoint_host_option
+	config_get_bool proxy_bypass "$section" proxy_bypass 0
+	config_get proxy_bypass_udp_sport "$section" proxy_bypass_udp_sport
+	config_get pre_refresh_hook "$section" pre_refresh_hook
+	config_get post_refresh_hook "$section" post_refresh_hook
+
+	if [ -n "$endpoint_host_option" ] && command -v uci >/dev/null 2>&1; then
+		if uci -q get "$endpoint_host_option" >/dev/null 2>&1; then
+			log_msg "endpoint host option readable instance=$section option=$endpoint_host_option"
+		else
+			log_msg "endpoint host option not readable instance=$section option=$endpoint_host_option"
+		fi
+	fi
+
+	log_msg "refresh start instance=$section interface=$interface reason=$reason"
+	run_hook "$pre_refresh_hook"
+	restart_init_service "$refresh_ddns_service"
+
+	if [ "$refresh_dnsmasq" -eq 1 ]; then
+		restart_init_service "dnsmasq"
+	fi
+
+	ensure_proxy_bypass_rule
+
+	ifdown "$interface" || log_msg "ifdown failed instance=$section interface=$interface"
+	sleep 2
+	ifup "$interface" || log_msg "ifup failed instance=$section interface=$interface"
+	sleep 3
+	log_wg_state
+	run_hook "$post_refresh_hook"
+	log_msg "refresh done instance=$section interface=$interface reason=$reason"
+}
+
+target_instance="${1:-}"
+reason="${2:-manual}"
+
+config_load "$CONFIG_NAME"
+
+if [ -n "$target_instance" ]; then
+	refresh_instance "$target_instance"
+else
+	config_foreach refresh_instance instance
+fi

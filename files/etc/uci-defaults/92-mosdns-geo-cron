@@ -1,0 +1,18 @@
+#!/bin/sh
+
+CRON_FILE=/etc/crontabs/root
+CRON_LINE='0 2 * * * /usr/share/mosdns/mosdns.uc update'
+
+mkdir -p /etc/crontabs
+[ -f "$CRON_FILE" ] || touch "$CRON_FILE"
+
+if grep -qF "$CRON_LINE" "$CRON_FILE"; then
+	exit 0
+fi
+
+sed -i '/\/usr\/share\/mosdns\/mosdns\.uc update/d' "$CRON_FILE" 2>/dev/null
+echo "$CRON_LINE" >>"$CRON_FILE"
+crontab /etc/crontabs/root
+
+exit 0
+

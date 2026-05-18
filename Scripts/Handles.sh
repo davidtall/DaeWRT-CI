@@ -1,6 +1,37 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
+. "$(dirname "$(realpath "$0")")/retry.sh"
 
 PKG_PATH="$GITHUB_WORKSPACE/$WRT_DIR/package/"
+
+preload_nikki_geodata() {
+	mkdir -p "$GITHUB_WORKSPACE/files/etc/nikki/run"
+
+	retry_cmd 5 15 curl -fL "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat" -o "$GITHUB_WORKSPACE/files/etc/nikki/run/geoip.dat"
+	retry_cmd 5 15 curl -fL "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" -o "$GITHUB_WORKSPACE/files/etc/nikki/run/geosite.dat"
+	retry_cmd 5 15 curl -fL "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb" -o "$GITHUB_WORKSPACE/files/etc/nikki/run/geoip.metadb"
+
+	cd "$PKG_PATH" && echo "nikki geodata has been preloaded into files/etc/nikki/run!"
+}
+
+preload_nikki_geodata
+
+# 修复 procd 源码镜像 404：优先使用 GitHub 镜像仓库。
+PROCD_MAKEFILE="../package/system/procd/Makefile"
+if [ -f "$PROCD_MAKEFILE" ]; then
+	sed -i 's#^PKG_SOURCE_URL:=.*procd\.git$#PKG_SOURCE_URL:=https://github.com/openwrt/procd.git#g' "$PROCD_MAKEFILE"
+	grep -q '^PKG_SOURCE_URL:=https://github.com/openwrt/procd.git$' "$PROCD_MAKEFILE" && \
+		cd "$PKG_PATH" && echo "procd source url has been switched to GitHub mirror!"
+fi
+
+# 修复 sbwml/luci-app-mosdns 的 ES6+ 语法与 LuCI jsmin 的兼容问题。
+MOSDNS_ROOT="./luci-app-mosdns"
+if [ -d "$MOSDNS_ROOT" ]; then
+	"$GITHUB_WORKSPACE/Scripts/patch_mosdns_jsmin_compat.sh" "$MOSDNS_ROOT"
+	cd "$PKG_PATH" && echo "mosdns jsmin compatibility has been fixed!"
+fi
 
 #预置HomeProxy数据
 if [ -d *"homeproxy"* ]; then
@@ -64,16 +95,6 @@ if [ -f "$NSS_PBUF" ]; then
 	sed -i 's/START=.*/START=86/g' $NSS_PBUF
 
 	cd $PKG_PATH && echo "qca-nss-pbuf has been fixed!"
-fi
-
-#修复TailScale配置文件冲突
-TS_FILE=$(find ../feeds/packages/ -maxdepth 3 -type f -wholename "*/tailscale/Makefile")
-if [ -f "$TS_FILE" ]; then
-	echo " "
-
-	sed -i '/\/files/d' $TS_FILE
-
-	cd $PKG_PATH && echo "tailscale has been fixed!"
 fi
 
 #修复Rust编译失败

@@ -1,0 +1,60 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+RUNTIME_ENV=/tmp/uv-env.sh
+
+mounted_uv_root() {
+	if mount | grep -q ' on /mnt/mmc ' && [ -d /mnt/mmc ] && [ -w /mnt/mmc ]; then
+		echo "/mnt/mmc/uv"
+		return 0
+	fi
+
+	for path in /mnt/*; do
+		[ -d "$path" ] || continue
+		[ -w "$path" ] || continue
+		echo "$path/uv"
+		return 0
+	done
+
+	return 1
+}
+
+select_uv_root() {
+	local uv_root
+	local attempt
+
+	attempt=0
+	while [ "$attempt" -lt 5 ]; do
+		if uv_root="$(mounted_uv_root)"; then
+			echo "$uv_root"
+			return 0
+		fi
+		attempt=$((attempt + 1))
+		sleep 1
+	done
+
+	echo "/opt/uv"
+}
+
+write_runtime_env() {
+	local uv_root
+
+	uv_root="$(select_uv_root)"
+	mkdir -p "$uv_root/cache" "$uv_root/python" "$uv_root/python-cache"
+
+	cat >"$RUNTIME_ENV" <<EOF
+export UV_CACHE_DIR=$uv_root/cache
+export UV_PYTHON_INSTALL_DIR=$uv_root/python
+export UV_PYTHON_CACHE_DIR=$uv_root/python-cache
+EOF
+}
+
+start() {
+	write_runtime_env
+}
+
+restart() {
+	start
+}

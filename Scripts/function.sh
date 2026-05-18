@@ -73,14 +73,8 @@ CONFIG_PACKAGE_kmod-usb-net-rndis=y
 CONFIG_PACKAGE_kmod-usb-net-rtl8150=y
 CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
 EOF
-#6.12内核不包含以下驱动
-if echo "$CI_NAME" | grep -v "6.12" > /dev/null; then
-  cat >> $1 <<EOF
-CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
-CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-fibocom=y
-CONFIG_PACKAGE_kmod-usb-net-qmi-wwan-quectel=y
-EOF
-fi
+# 6.12/6.18 source trees do not currently build these vendor QMI WWAN modules.
+# Keep them disabled unless the selected source tree carries compatible packages.
 
 }
 
@@ -118,6 +112,25 @@ function remove_wifi() {
   rm -rf package/firmware/ipq-wifi
 }
 
+function normalize_athena_led_device_packages() {
+  local config_file=$1
+  local missing_pkg_pattern='luci-i18n-athena-led-zh-cn'
+
+  if ! find ./package ./feeds -type f -path '*/luci-app-athena-led/Makefile' -print -quit 2>/dev/null | grep -q .; then
+    missing_pkg_pattern='luci-app-athena-led|luci-i18n-athena-led-zh-cn'
+  fi
+
+  find ./target/linux/qualcommax -type f \( -name "*.mk" -o -name "target.mk" \) -print0 2>/dev/null |
+    xargs -0 -r sed -i -E ":again; s/(^|[[:space:]])-?(${missing_pkg_pattern})([[:space:]]|$)/ /g; t again; s/[[:space:]]+$//"
+
+  sed -i -E ":again; s/(^CONFIG_TARGET_DEVICE_PACKAGES_[^\"]*=\")([^\"]*)(^|[[:space:]])-?(${missing_pkg_pattern})([[:space:]]|\"$)/\1\2\5/g; t again; s/[[:space:]]+\"/\"/" "$config_file"
+  sed -i -E "/^#? ?CONFIG_PACKAGE_luci-i18n-athena-led-zh-cn(=| is not set)/d" "$config_file"
+
+  if [[ "$missing_pkg_pattern" == *"luci-app-athena-led"* ]]; then
+    sed -i -E "/^#? ?CONFIG_PACKAGE_luci-app-athena-led(=| is not set)/d" "$config_file"
+  fi
+}
+
 function set_kernel_size() {
   #修改jdc ax1800 pro 的内核大小为12M
   image_file='./target/linux/qualcommax/image/ipq60xx.mk'
@@ -127,6 +140,7 @@ function set_kernel_size() {
   sed -i "/^define Device\/jdcloud_re-cs-02/,/^endef/ { /KERNEL_SIZE := 6144k/s//KERNEL_SIZE := 12288k/ }" $image_file
   sed -i "/^define Device\/jdcloud_re-cs-07/,/^endef/ { /KERNEL_SIZE := 6144k/s//KERNEL_SIZE := 12288k/ }" $image_file
   sed -i "/^define Device\/link_nn6000-common/,/^endef/ { /KERNEL_SIZE := 6144k/s//KERNEL_SIZE := 12288k/ }" $image_file
+#  sed -i "/^define Device\/redmi_ax5-jdcloud/,/^endef/ s/^endef/  KERNEL_SIZE := 12288k\nendef/" $image_file
   sed -i "/^define Device\/linksys_mr/,/^endef/ { /KERNEL_SIZE := 8192k/s//KERNEL_SIZE := 12288k/ }" $image_file
   cat $image_file
 }
@@ -145,11 +159,12 @@ function generate_config() {
   local target=$(echo $WRT_ARCH | cut -d'_' -f2)
 
   #删除wifi依赖
-  if [[ "$WRT_CONFIG" == *"NOWIFI"* ]]; then
+  if [[ "$WRT_CONFIG" == *"NOWIFI"* || "$WRT_CONFIG" == *"WIFI-NO"* ]]; then
     remove_wifi $target
   fi
 
   set_nss_driver $config_file
+  normalize_athena_led_device_packages $config_file
   #增加ebpf
   cat_ebpf_config $config_file
   enable_skb_recycler $config_file
@@ -157,7 +172,3 @@ function generate_config() {
   #增加内核选项
   cat_kernel_config "target/linux/qualcommax/${target}/config-default"
 }
-
-
-
-

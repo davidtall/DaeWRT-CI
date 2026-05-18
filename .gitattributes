@@ -1,0 +1,12 @@
+.gitattributes text eol=lf
+*.txt text eol=lf
+*.sh text eol=lf
+files/etc/init.d/* text eol=lf
+files/etc/uci-defaults/* text eol=lf
+files/usr/bin/* text eol=lf
+files/etc/profile.d/* text eol=lf
+files/etc/rc.local text eol=lf
+package/*/files/etc/config/* text eol=lf
+package/*/files/etc/hotplug.d/*/* text eol=lf
+package/*/files/etc/init.d/* text eol=lf
+package/*/files/usr/bin/* text eol=lf

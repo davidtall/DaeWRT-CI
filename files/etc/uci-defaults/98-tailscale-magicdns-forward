@@ -1,0 +1,30 @@
+#!/bin/sh
+
+command -v uci >/dev/null 2>&1 || exit 0
+
+changed=0
+
+ensure_list_entry() {
+	local option="$1"
+	local value="$2"
+	local current
+
+	current="$(uci -q get "$option" 2>/dev/null | tr ' ' '\n')"
+	printf '%s\n' "$current" | grep -Fx "$value" >/dev/null 2>&1 && return 0
+
+	uci add_list "$option=$value" || return 1
+	changed=1
+}
+
+ensure_list_entry "dhcp.@dnsmasq[0].server" "/headscale.jmsu.top/223.5.5.5"
+ensure_list_entry "dhcp.@dnsmasq[0].server" "/derper.jmsu.top/223.5.5.5"
+ensure_list_entry "dhcp.@dnsmasq[0].server" "/hs.jmsu.top/100.100.100.100@tailscale0"
+
+[ "$changed" -eq 1 ] || exit 0
+
+uci commit dhcp
+
+# uci-defaults may run after dnsmasq has already started on first boot.
+[ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+
+exit 0

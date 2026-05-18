@@ -1,0 +1,22 @@
+#!/bin/sh
+
+CRON_FILE=/etc/crontabs/root
+CRON_LINE='30 3 * * 0 /usr/bin/nikki-geodata-updater >/tmp/nikki-geodata-updater.log 2>&1'
+
+mkdir -p /etc/crontabs
+[ -f "$CRON_FILE" ] || touch "$CRON_FILE"
+
+if grep -qF "$CRON_LINE" "$CRON_FILE"; then
+	exit 0
+fi
+
+if grep -q '/usr/bin/nikki-geodata-updater' "$CRON_FILE"; then
+	exit 0
+fi
+
+if ! grep -qF "$CRON_LINE" "$CRON_FILE"; then
+	echo "$CRON_LINE" >>"$CRON_FILE"
+	crontab /etc/crontabs/root
+fi
+
+exit 0

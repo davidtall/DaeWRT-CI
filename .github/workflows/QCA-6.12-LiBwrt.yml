@@ -1,3 +1,6 @@
+﻿# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
 #CI项目
 name: QCA-6.12-LiBwrt
 
@@ -32,9 +35,9 @@ jobs:
       fail-fast: false
       #max-parallel: 3
       matrix:
-        CONFIG: [IPQ807X-NOWIFI, IPQ807X-WIFI,IPQ60XX-NOWIFI, IPQ60XX-WIFI]
-        SOURCE: [LiBwrt/openwrt-6.x]
-#        SOURCE: [davidtall/LiBwrt-openwrt-6.x]
+        CONFIG: [IPQ807X-WIFI-NO, IPQ807X-WIFI-YES,IPQ60XX-WIFI-NO, IPQ60XX-WIFI-YES]
+        SOURCE: [davidtall/LiBwrt-openwrt-6.x]
+#        SOURCE: [LiBwrt/openwrt-6.x]
         BRANCH: [k6.12-nss]
 
     #调用公用编译核心WRT-CORE.yml
@@ -66,3 +69,4 @@ jobs:
       WRT_TEST: ${{inputs.TEST}}
 
       CI_NAME: ${{github.workflow}}
+      RUNNER_LABELS: '["ubuntu-latest"]'

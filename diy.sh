@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#WRT_REPO='https://github.com/LiBwrt/openwrt-6.x'
+#WRT_REPO='https://github.com/davidtall/LiBwrt-openwrt-6.x'
 #WRT_BRANCH='k6.12-nss'
 
 #WRT_REPO='https://github.com/davidtall/immortalwrt'
@@ -15,7 +15,7 @@ if [ -n "$1" ]; then
     export WRT_CONFIG="${filename%.*}"
 else
     # 如果没有传递参数，设置默认值
-    export WRT_CONFIG="IPQ60XX-NOWIFI"
+    export WRT_CONFIG="IPQ60XX-WIFI-NO"
 fi
 
 if [ -n "$2" ]; then

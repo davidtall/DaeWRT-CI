@@ -1,0 +1,46 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+PROBE_HOST="100.100.100.100"
+PROBE_PORT="53"
+PROBE_TAG="tailscale-quad100-health"
+
+probe_quad100() {
+	if command -v nc >/dev/null 2>&1; then
+		nc -z -w 2 "$PROBE_HOST" "$PROBE_PORT" >/dev/null 2>&1
+		return $?
+	fi
+
+	if command -v nslookup >/dev/null 2>&1; then
+		nslookup openwrt.org "$PROBE_HOST" >/dev/null 2>&1
+		return $?
+	fi
+
+	logger -t "$PROBE_TAG" "skipping Quad100 health probe because neither nc nor nslookup is available"
+	return 0
+}
+
+start() {
+	local attempt=0
+
+	pgrep -x tailscaled >/dev/null 2>&1 || return 0
+
+	while [ "$attempt" -lt 5 ]; do
+		if probe_quad100; then
+			logger -t tailscale-quad100-health "Quad100 DNS probe succeeded on ${PROBE_HOST}:${PROBE_PORT} after $((attempt + 1)) attempt(s)"
+			return 0
+		fi
+
+		attempt=$((attempt + 1))
+		sleep 2
+	done
+
+	logger -t tailscale-quad100-health "Quad100 DNS probe failed on ${PROBE_HOST}:${PROBE_PORT} after ${attempt} attempt(s)"
+	return 0
+}
+
+restart() {
+	start
+}
