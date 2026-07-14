@@ -1,0 +1,8 @@
+#!/bin/sh
+
+[ -x /etc/init.d/tailscale-lan-tailnet ] || exit 0
+
+/etc/init.d/tailscale-lan-tailnet enable >/dev/null 2>&1 || true
+/etc/init.d/tailscale-lan-tailnet start >/dev/null 2>&1 || true
+
+exit 0

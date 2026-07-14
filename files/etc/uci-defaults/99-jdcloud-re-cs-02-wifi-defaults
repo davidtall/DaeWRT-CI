@@ -1,0 +1,69 @@
+#!/bin/sh
+# JDCloud RE-CS-02 / AX6600 tri-band WiFi defaults.
+
+set -eu
+
+TAG="jdcloud-re-cs-02-wifi-defaults"
+BOARD="$(cat /tmp/sysinfo/board_name 2>/dev/null || true)"
+
+[ "$BOARD" = "jdcloud,re-cs-02" ] || exit 0
+
+if [ ! -s /etc/config/wireless ]; then
+	wifi config >/dev/null 2>&1 || true
+fi
+
+for section in radio0 radio1 radio2 default_radio0 default_radio1 default_radio2; do
+	if ! uci -q get "wireless.$section" >/dev/null; then
+		logger -t "$TAG" "missing wireless.$section; leaving defaults script for retry"
+		exit 1
+	fi
+done
+
+# 5.8 GHz: embedded 5 GHz radio, HE80 on the high band.
+uci set wireless.radio0.band='5g'
+uci set wireless.radio0.channel='149'
+uci set wireless.radio0.htmode='HE80'
+uci set wireless.radio0.country='CN'
+uci set wireless.radio0.disabled='0'
+uci set wireless.radio0.cell_density='0'
+uci set wireless.default_radio0.device='radio0'
+uci set wireless.default_radio0.network='lan'
+uci set wireless.default_radio0.mode='ap'
+uci set wireless.default_radio0.ssid='DAE-WRT-5.8G'
+uci set wireless.default_radio0.encryption='psk2+ccmp'
+uci set wireless.default_radio0.ieee80211w='0'
+
+# 2.4 GHz: IoT compatibility SSID, fixed to the cleanest observed channel.
+uci set wireless.radio1.band='2g'
+uci set wireless.radio1.channel='1'
+uci set wireless.radio1.htmode='HT20'
+uci set wireless.radio1.country='CN'
+uci set wireless.radio1.disabled='0'
+uci set wireless.radio1.cell_density='0'
+uci set wireless.radio1.legacy_rates='1'
+uci set wireless.default_radio1.device='radio1'
+uci set wireless.default_radio1.network='lan'
+uci set wireless.default_radio1.mode='ap'
+uci set wireless.default_radio1.ssid='DAE-WRT-IoT'
+uci set wireless.default_radio1.encryption='psk2+ccmp'
+uci set wireless.default_radio1.ieee80211w='0'
+
+# 5.2 GHz: PCIe QCN9074 radio, HE160 for the main high-throughput SSID.
+uci set wireless.radio2.band='5g'
+uci set wireless.radio2.channel='36'
+uci set wireless.radio2.htmode='HE160'
+uci set wireless.radio2.country='CN'
+uci set wireless.radio2.disabled='0'
+uci set wireless.radio2.cell_density='0'
+uci set wireless.default_radio2.device='radio2'
+uci set wireless.default_radio2.network='lan'
+uci set wireless.default_radio2.mode='ap'
+uci set wireless.default_radio2.ssid='DAE-WRT-5.2G'
+uci set wireless.default_radio2.encryption='psk2+ccmp'
+uci set wireless.default_radio2.ieee80211w='0'
+
+uci commit wireless
+wifi reload >/dev/null 2>&1 || true
+logger -t "$TAG" "applied JDCloud RE-CS-02 tri-band WiFi defaults"
+
+exit 0

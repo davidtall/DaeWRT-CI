@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
+name: CPE-5G
+
+on:
+  workflow_dispatch:
+    inputs:
+      BUILD_BASELINE_A:
+        description: '故障隔离时额外构建无 CPE/Lucky/Tailscale/wrtbak overlay 的 A 基线；日常保持关闭。'
+        default: false
+        required: false
+        type: boolean
+      TEST:
+        description: '仅输出配置文件，不编译固件。'
+        default: 'false'
+        required: false
+        type: boolean
+      WRTBAK_DEVICE_ALIAS:
+        description: 'B 对照可选：写入 luci-app-wrtbak 的设备别名。'
+        default: ''
+        required: false
+        type: string
+      WRTBAK_FIRSTBOOT_AUTO_ENABLED:
+        description: 'B 对照仅在已验证场景启用首启恢复；默认关闭。'
+        default: '0'
+        required: false
+        type: string
+
+permissions: write-all
+
+jobs:
+  baseline_a:
+    if: ${{ inputs.BUILD_BASELINE_A }}
+    uses: ./.github/workflows/WRT-CORE.yml
+    secrets: inherit
+    with:
+      WRT_CONFIG: IPQ60XX-706-NOWIFI
+      WRT_THEME: argon
+      WRT_NAME: CPE-706-A
+      WRT_SSID: CPE-706-A
+      WRT_WORD: 12345678
+      WRT_IP: 192.168.10.1
+      WRT_PW: 无
+      WRT_REPO: https://github.com/VIKINGYFY/immortalwrt.git
+      WRT_BRANCH: main
+      WRT_COMMIT: 0bad892975fe49fd180f99b414a7f168bb694dd7
+      WRT_SOURCE: VIKINGYFY/immortalwrt
+      WRT_PACKAGE: ''
+      WRT_TEST: ${{ inputs.TEST }}
+      WRT_CPE_5G: false
+      WRT_FEATURE_OVERLAY: false
+      WRT_LAN_TAILNET: false
+      WRT_WAN_SSH: false
+      WRT_REQUIRED_DEVICE: jdcloud_re-ss-01
+      CI_NAME: CPE-706-A-6.18-MANUAL
+      RUNNER_LABELS: '["ubuntu-latest"]'
+      JOB_TIMEOUT_MINUTES: 360
+
+  cpe_overlay_b:
+    uses: ./.github/workflows/WRT-CORE.yml
+    secrets: inherit
+    with:
+      WRT_CONFIG: IPQ60XX-706-NOWIFI
+      WRT_THEME: argon
+      WRT_NAME: CPE-5G
+      WRT_SSID: CPE-5G
+      WRT_WORD: 12345678
+      WRT_IP: 192.168.13.1
+      WRT_PW: 无
+      WRT_REPO: https://github.com/VIKINGYFY/immortalwrt.git
+      WRT_BRANCH: main
+      WRT_COMMIT: 0bad892975fe49fd180f99b414a7f168bb694dd7
+      WRT_SOURCE: VIKINGYFY/immortalwrt
+      WRT_PACKAGE: |
+        CONFIG_PACKAGE_mwan3=y
+        CONFIG_PACKAGE_luci-app-mwan3=y
+      WRT_TEST: ${{ inputs.TEST }}
+      WRT_CPE_5G: true
+      WRT_FEATURE_OVERLAY: true
+      WRT_LAN_TAILNET: false
+      WRT_WAN_SSH: false
+      WRT_WAN_SSH_PORT: '22'
+      WRT_WAN_SSH_SOURCE: ''
+      WRT_REQUIRED_DEVICE: jdcloud_re-ss-01
+      WRTBAK_DEVICE_ALIAS: ${{ inputs.WRTBAK_DEVICE_ALIAS || '' }}
+      WRTBAK_PROXY_PROFILE: auto
+      WRTBAK_FIRSTBOOT_AUTO_ENABLED: ${{ inputs.WRTBAK_FIRSTBOOT_AUTO_ENABLED || '0' }}
+      CI_NAME: CPE-706-B-6.18-MANUAL
+      RUNNER_LABELS: '["ubuntu-latest"]'
+      JOB_TIMEOUT_MINUTES: 360

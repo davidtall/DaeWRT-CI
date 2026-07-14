@@ -12,9 +12,11 @@ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 #PKG_SOURCE_URL:=https://github.com/daeuniverse/dae.git
 PKG_SOURCE_URL:=https://github.com/olicesx/dae.git
 GIT_BRANCH:=kdae
+OUTBOUND_BRANCH:=perf/complete-optimizations
+OUTBOUND_VERSION:=d7f10a0d190322dfa98bef469c19caa5e72fdbd8
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_VERSION:=$(shell git ls-remote $(PKG_SOURCE_URL) $(GIT_BRANCH) | cut -c1-7)
-PKG_MIRROR_HASH:=
+PKG_SOURCE_VERSION:=$(shell git ls-remote $(PKG_SOURCE_URL) $(GIT_BRANCH) | cut -f1)
+PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=AGPL-3.0-only
 PKG_LICENSE_FILE:=LICENSE
@@ -47,6 +49,7 @@ GO_PKG_TARGET_VARS+= \
 	GOEXPERIMENT=newinliner,simd
 
 TAR_CMD=$(HOST_TAR) -C $(BUILD_DIR)/ $(TAR_OPTIONS)
+DAE_HOST_GO=$(firstword $(wildcard $(STAGING_DIR_HOSTPKG)/lib/go-*/bin/go $(STAGING_DIR_HOSTPKG)/bin/go))
 
 define Package/dae/Default
   SECTION:=net
@@ -85,13 +88,10 @@ endef
 
 define Build/Prepare
 	( \
-		rm -rf $(PKG_BUILD_DIR) && git clone -b $(GIT_BRANCH) $(PKG_SOURCE_URL) $(PKG_BUILD_DIR) ; \
+		rm -rf $(PKG_BUILD_DIR) && git clone -b $(GIT_BRANCH) $(PKG_SOURCE_URL) $(PKG_BUILD_DIR) && git -C $(PKG_BUILD_DIR) checkout $(PKG_SOURCE_VERSION) ; \
 		pushd $(PKG_BUILD_DIR) ; \
-		rm -rf outbound && git clone --depth=1 -b perf/complete-optimizations https://github.com/olicesx/outbound.git outbound ; \
-		go mod edit -replace github.com/daeuniverse/outbound=./outbound ; \
-		go get -u=patch ; \
-		git submodule update --init ; \
-		go mod tidy ; \
+			rm -rf outbound && git clone -b $(OUTBOUND_BRANCH) https://github.com/olicesx/outbound.git outbound && git -C outbound checkout $(OUTBOUND_VERSION) ; \
+			git submodule update --init ; \
 		popd ; \
 	)
 endef
@@ -118,8 +118,13 @@ define Build/Compile
 		BPF_CFLAGS="$(DAE_CFLAGS)" \
 		BPF_TARGET="bpfel,bpfeb" \
 		BPF_TRACE_TARGET="$(GO_ARCH)" ; \
-		go generate $(PKG_BUILD_DIR)/control/control.go ; \
-		go generate $(PKG_BUILD_DIR)/trace/trace.go ; \
+		pushd $(PKG_BUILD_DIR) ; \
+			$(DAE_HOST_GO) mod edit -replace github.com/daeuniverse/outbound=./outbound ; \
+			$(DAE_HOST_GO) get -u=patch ; \
+			$(DAE_HOST_GO) mod tidy ; \
+			$(DAE_HOST_GO) generate ./control/control.go ; \
+			$(DAE_HOST_GO) generate ./trace/trace.go ; \
+		popd ; \
 		$(call GoPackage/Build/Compile) ; \
 	)
 endef

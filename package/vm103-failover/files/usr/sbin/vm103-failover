@@ -1,0 +1,178 @@
+#!/bin/sh
+
+TAG="vm103-failover"
+
+PRIMARY_GW="192.168.9.1"
+PRIMARY_DEV="wan"
+PRIMARY_SRC="192.168.9.243"
+PRIMARY_TABLE="201"
+PRIMARY_RULE_PREF="1100"
+
+BACKUP_GW="172.31.103.1"
+BACKUP_DEV="gre4-gre_vm103"
+BACKUP_SRC="172.31.103.2"
+BACKUP_TABLE="203"
+BACKUP_RULE_PREF="1110"
+
+LAN_DEV="br-lan"
+BACKUP6_GW="fd42:103:1::1"
+BACKUP6_DEV="gre4-gre_vm103"
+BACKUP6_SRC="fd42:103:1::2"
+BACKUP6_TABLE="204"
+BACKUP6_RULE_PREF="1090"
+
+TARGETS="223.5.5.5 119.29.29.29 9.9.9.9"
+RELIABILITY="2"
+DOWN_THRESHOLD="3"
+UP_THRESHOLD="5"
+INTERVAL="5"
+STATE_FILE="/var/run/vm103-failover.state"
+
+log_notice() {
+	logger -t "$TAG" "$*"
+}
+
+setup_probe_routes() {
+	ip link show dev "$PRIMARY_DEV" >/dev/null 2>&1 || return 1
+	ip link show dev "$BACKUP_DEV" >/dev/null 2>&1 || return 1
+
+	ip rule del pref "$PRIMARY_RULE_PREF" 2>/dev/null || true
+	ip rule del pref "$BACKUP_RULE_PREF" 2>/dev/null || true
+	ip route flush table "$PRIMARY_TABLE" 2>/dev/null || true
+	ip route flush table "$BACKUP_TABLE" 2>/dev/null || true
+
+	ip route add table "$PRIMARY_TABLE" 192.168.9.0/24 dev "$PRIMARY_DEV" src "$PRIMARY_SRC" || return 1
+	ip route add table "$PRIMARY_TABLE" default via "$PRIMARY_GW" dev "$PRIMARY_DEV" || return 1
+	ip route add table "$BACKUP_TABLE" 172.31.103.0/30 dev "$BACKUP_DEV" src "$BACKUP_SRC" || return 1
+	ip route add table "$BACKUP_TABLE" default via "$BACKUP_GW" dev "$BACKUP_DEV" || return 1
+	ip rule add pref "$PRIMARY_RULE_PREF" from "$PRIMARY_SRC" lookup "$PRIMARY_TABLE" || return 1
+	ip rule add pref "$BACKUP_RULE_PREF" from "$BACKUP_SRC" lookup "$BACKUP_TABLE" || return 1
+
+	ip -6 route flush table "$BACKUP6_TABLE" 2>/dev/null || true
+	ip -6 route add table "$BACKUP6_TABLE" fd42:103:1::/64 dev "$BACKUP6_DEV" src "$BACKUP6_SRC" || return 1
+	ip -6 route add table "$BACKUP6_TABLE" default via "$BACKUP6_GW" dev "$BACKUP6_DEV" || return 1
+}
+
+probe_from() {
+	source_address="$1"
+	successes=0
+
+	for target in $TARGETS; do
+		if ping -I "$source_address" -c 1 -W 1 "$target" >/dev/null 2>&1; then
+			successes=$((successes + 1))
+			[ "$successes" -ge "$RELIABILITY" ] && return 0
+		fi
+	done
+
+	return 1
+}
+
+ensure_backup_default() {
+	ip route replace default via "$BACKUP_GW" dev "$BACKUP_DEV" metric 200
+}
+
+set_primary() {
+	ip -6 rule del pref "$BACKUP6_RULE_PREF" 2>/dev/null || true
+	ip route replace default via "$PRIMARY_GW" dev "$PRIMARY_DEV" metric 0 || return 1
+	ensure_backup_default || true
+	echo primary >"$STATE_FILE"
+}
+
+set_backup() {
+	ensure_backup_default || return 1
+	ip -6 rule del pref "$BACKUP6_RULE_PREF" 2>/dev/null || true
+	if ! ip -6 rule add pref "$BACKUP6_RULE_PREF" iif "$LAN_DEV" lookup "$BACKUP6_TABLE"; then
+		log_notice "IPv4 backup is ready but IPv6 backup policy could not be installed"
+	fi
+	ip route del default via "$PRIMARY_GW" dev "$PRIMARY_DEV" 2>/dev/null || true
+	echo backup >"$STATE_FILE"
+}
+
+case "${1:-}" in
+	--primary)
+		set_primary
+		exit $?
+		;;
+	--status)
+		if [ -r "$STATE_FILE" ]; then
+			cat "$STATE_FILE"
+		else
+			echo unknown
+		fi
+		exit 0
+		;;
+esac
+
+until setup_probe_routes; do
+	log_notice "probe routes are not ready; retrying"
+	sleep "$INTERVAL"
+done
+
+state="primary"
+down_count=0
+up_count=0
+backup_failure_logged=0
+set_primary || exit 1
+log_notice "monitor started in primary state"
+
+while true; do
+	if probe_from "$PRIMARY_SRC"; then
+		primary_ok=1
+	else
+		primary_ok=0
+	fi
+
+	if [ "$state" = "primary" ]; then
+		if [ "$primary_ok" -eq 1 ]; then
+			down_count=0
+		else
+			down_count=$((down_count + 1))
+			if probe_from "$BACKUP_SRC"; then
+				backup_ok=1
+			else
+				backup_ok=0
+			fi
+
+			if [ "$down_count" -ge "$DOWN_THRESHOLD" ] && [ "$backup_ok" -eq 1 ]; then
+				if set_backup; then
+					state="backup"
+					up_count=0
+					backup_failure_logged=0
+					log_notice "switched to VM103 mobile backup after ${down_count} failed primary checks"
+				fi
+			elif [ "$down_count" -ge "$DOWN_THRESHOLD" ] && [ "$backup_ok" -eq 0 ]; then
+				log_notice "primary failed but backup is unhealthy; retaining primary route"
+			fi
+		fi
+	else
+		# Netifd can re-add the static primary route after an interface event.
+		# Keep it absent while the state machine owns the backup state.
+		ip route del default via "$PRIMARY_GW" dev "$PRIMARY_DEV" 2>/dev/null || true
+		ensure_backup_default || true
+		if ! ip -6 rule show | grep -q "^${BACKUP6_RULE_PREF}:.*iif ${LAN_DEV} lookup ${BACKUP6_TABLE}"; then
+			ip -6 rule add pref "$BACKUP6_RULE_PREF" iif "$LAN_DEV" lookup "$BACKUP6_TABLE" 2>/dev/null || true
+		fi
+
+		if probe_from "$BACKUP_SRC"; then
+			backup_failure_logged=0
+		elif [ "$backup_failure_logged" -eq 0 ]; then
+			log_notice "backup path became unhealthy while active"
+			backup_failure_logged=1
+		fi
+
+		if [ "$primary_ok" -eq 1 ]; then
+			up_count=$((up_count + 1))
+			if [ "$up_count" -ge "$UP_THRESHOLD" ]; then
+				if set_primary; then
+					state="primary"
+					down_count=0
+					log_notice "restored primary after ${up_count} successful checks"
+				fi
+			fi
+		else
+			up_count=0
+		fi
+	fi
+
+	sleep "$INTERVAL"
+done

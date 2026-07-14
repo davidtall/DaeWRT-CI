@@ -1,6 +1,117 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
+. "$(dirname "$(realpath "$0")")/retry.sh"
 
 PKG_PATH="$GITHUB_WORKSPACE/$WRT_DIR/package/"
+
+preload_nikki_geodata() {
+	mkdir -p "$GITHUB_WORKSPACE/files/etc/nikki/run"
+
+	retry_cmd 5 15 curl -fL "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat" -o "$GITHUB_WORKSPACE/files/etc/nikki/run/geoip.dat"
+	retry_cmd 5 15 curl -fL "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" -o "$GITHUB_WORKSPACE/files/etc/nikki/run/geosite.dat"
+	retry_cmd 5 15 curl -fL "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb" -o "$GITHUB_WORKSPACE/files/etc/nikki/run/geoip.metadb"
+
+	cd "$PKG_PATH" && echo "nikki geodata has been preloaded into files/etc/nikki/run!"
+}
+
+preload_nikki_geodata
+
+patch_wrtbak_proxy_url() {
+	WRTBAK_S3="./luci-app-wrtbak/root/usr/lib/wrtbak/remote_s3.sh"
+	[ -f "$WRTBAK_S3" ] || return 0
+
+	if grep -q 'wrtbak_main_option proxy_url' "$WRTBAK_S3" && grep -q 'WRTBAK_S3_FORCE_DIRECT' "$WRTBAK_S3"; then
+		cd "$PKG_PATH" && echo "wrtbak S3 proxy_url support is already present!"
+		return 0
+	fi
+
+	python3 - "$WRTBAK_S3" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+old_plain = '''wrtbak_s3_rclone() {
+	wrtbak_config=$1
+	shift
+	rclone --config "$wrtbak_config" "$@"
+}'''
+old_proxy = '''wrtbak_s3_rclone() {
+	wrtbak_config=$1
+	shift
+	wrtbak_proxy_url=$(wrtbak_main_option proxy_url "")
+	if [ -n "$wrtbak_proxy_url" ]; then
+		HTTP_PROXY="$wrtbak_proxy_url" HTTPS_PROXY="$wrtbak_proxy_url" ALL_PROXY="$wrtbak_proxy_url" \\
+		http_proxy="$wrtbak_proxy_url" https_proxy="$wrtbak_proxy_url" all_proxy="$wrtbak_proxy_url" \\
+			rclone --config "$wrtbak_config" "$@"
+	else
+		rclone --config "$wrtbak_config" "$@"
+	fi
+}'''
+new = '''wrtbak_s3_rclone() {
+	wrtbak_config=$1
+	shift
+	case "${WRTBAK_S3_FORCE_DIRECT:-0}" in
+		1|true|yes|on|direct)
+			wrtbak_proxy_url=
+			;;
+		*)
+			wrtbak_proxy_url=$(wrtbak_main_option proxy_url "")
+			;;
+	esac
+	if [ -n "$wrtbak_proxy_url" ]; then
+		HTTP_PROXY="$wrtbak_proxy_url" \\
+		HTTPS_PROXY="$wrtbak_proxy_url" \\
+		ALL_PROXY="$wrtbak_proxy_url" \\
+		http_proxy="$wrtbak_proxy_url" \\
+		https_proxy="$wrtbak_proxy_url" \\
+		all_proxy="$wrtbak_proxy_url" \\
+		NO_PROXY="${NO_PROXY:-localhost,127.0.0.1,::1}" \\
+		no_proxy="${no_proxy:-localhost,127.0.0.1,::1}" \\
+			rclone --config "$wrtbak_config" "$@"
+	else
+		rclone --config "$wrtbak_config" "$@"
+	fi
+}'''
+if old_plain in text:
+	text = text.replace(old_plain, new, 1)
+elif old_proxy in text:
+	text = text.replace(old_proxy, new, 1)
+else:
+	raise SystemExit("wrtbak S3 rclone function shape changed")
+path.write_text(text)
+PY
+
+	grep -q 'wrtbak_main_option proxy_url' "$WRTBAK_S3" || {
+		echo "ERROR: failed to patch wrtbak S3 proxy_url support" >&2
+		exit 1
+	}
+	grep -q 'WRTBAK_S3_FORCE_DIRECT' "$WRTBAK_S3" || {
+		echo "ERROR: failed to patch wrtbak firstboot direct-R2 support" >&2
+		exit 1
+	}
+
+	cd "$PKG_PATH" && echo "wrtbak S3 proxy_url support has been patched!"
+}
+
+patch_wrtbak_proxy_url
+
+# 修复 procd 源码镜像 404：优先使用 GitHub 镜像仓库。
+PROCD_MAKEFILE="../package/system/procd/Makefile"
+if [ -f "$PROCD_MAKEFILE" ]; then
+	sed -i 's#^PKG_SOURCE_URL:=.*procd\.git$#PKG_SOURCE_URL:=https://github.com/openwrt/procd.git#g' "$PROCD_MAKEFILE"
+	grep -q '^PKG_SOURCE_URL:=https://github.com/openwrt/procd.git$' "$PROCD_MAKEFILE" && \
+		cd "$PKG_PATH" && echo "procd source url has been switched to GitHub mirror!"
+fi
+
+# 修复 sbwml/luci-app-mosdns 的 ES6+ 语法与 LuCI jsmin 的兼容问题。
+MOSDNS_ROOT="./luci-app-mosdns"
+if [ -d "$MOSDNS_ROOT" ]; then
+	"$GITHUB_WORKSPACE/Scripts/patch_mosdns_jsmin_compat.sh" "$MOSDNS_ROOT"
+	cd "$PKG_PATH" && echo "mosdns jsmin compatibility has been fixed!"
+fi
 
 #预置HomeProxy数据
 if [ -d *"homeproxy"* ]; then
@@ -64,16 +175,6 @@ if [ -f "$NSS_PBUF" ]; then
 	sed -i 's/START=.*/START=86/g' $NSS_PBUF
 
 	cd $PKG_PATH && echo "qca-nss-pbuf has been fixed!"
-fi
-
-#修复TailScale配置文件冲突
-TS_FILE=$(find ../feeds/packages/ -maxdepth 3 -type f -wholename "*/tailscale/Makefile")
-if [ -f "$TS_FILE" ]; then
-	echo " "
-
-	sed -i '/\/files/d' $TS_FILE
-
-	cd $PKG_PATH && echo "tailscale has been fixed!"
 fi
 
 #修复Rust编译失败

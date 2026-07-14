@@ -1,8 +1,12 @@
+﻿# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
 #CI项目
 name: QCA-6.12-VIKINGYFY
 
 #CI计划
 on:
+  #定时编译已迁移到 QCA-6.18-VIKINGYFY
   #自动编译：当Auto-Clean运行完成后
 #  workflow_run:
 #    workflows: ["Auto-Clean"]
@@ -20,6 +24,40 @@ on:
         default: 'false'
         required: false
         type: boolean
+      LAN_IP:
+        description: '默认 LAN IPv4 地址，留空使用 192.168.10.1。'
+        default: '192.168.10.1'
+        required: false
+        type: string
+      LAN_TAILNET:
+        description: '允许 LAN 设备访问 Tailscale 内网。默认关闭；仅在确认该路由器应作为 LAN->tailnet 网关时开启。'
+        default: false
+        required: false
+        type: boolean
+      WAN_SSH:
+        description: '允许从 WAN 口访问路由器本机 Dropbear SSH。默认关闭，仅在确认需要公网/上级网络 SSH 管理时开启。'
+        default: false
+        required: false
+        type: boolean
+      WAN_SSH_PORT:
+        description: 'WAN 入站 Dropbear SSH 端口。仅 WAN_SSH=true 时生效。'
+        default: '22'
+        required: false
+        type: string
+      WAN_SSH_SOURCE:
+        description: '可选：限制允许访问 WAN SSH 的来源 IP/CIDR，例如 203.0.113.10/32。留空表示不限制来源。'
+        required: false
+        type: string
+      WRTBAK_DEVICE_ALIAS:
+        description: '可选：写入 luci-app-wrtbak 的设备别名，例如 office-re-ss-01。'
+        default: ''
+        required: false
+        type: string
+      WRTBAK_PROXY_PROFILE:
+        description: '可选：wrtbak R2 代理配置，auto/home/office/dorm。'
+        default: 'auto'
+        required: false
+        type: string
 
 #CI权限
 permissions: write-all
@@ -32,14 +70,15 @@ jobs:
       fail-fast: false
       #max-parallel: 3
       matrix:
-#        CONFIG: [IPQ807X-NOWIFI, IPQ807X-WIFI,IPQ60XX-NOWIFI, IPQ60XX-WIFI]
-        CONFIG: [IPQ60XX-NOWIFI, IPQ60XX-WIFI]
+#        CONFIG: [IPQ807X-WIFI-NO, IPQ807X-WIFI-YES,IPQ60XX-WIFI-NO, IPQ60XX-WIFI-YES]
+        CONFIG: [IPQ60XX-WIFI-NO, IPQ60XX-WIFI-YES]
         SOURCE: [VIKINGYFY/immortalwrt]
 #        SOURCE: [davidtall/VIKINGYFY-immort]
         BRANCH: [main]
 
     #调用公用编译核心WRT-CORE.yml
     uses: ./.github/workflows/WRT-CORE.yml
+    secrets: inherit
     with:
       #编译配置
       WRT_CONFIG: ${{matrix.CONFIG}}
@@ -52,7 +91,15 @@ jobs:
       #默认WIFI密码
       WRT_WORD: 12345678
       #默认地址
-      WRT_IP: 192.168.10.1
+      WRT_IP: ${{ inputs.LAN_IP || '192.168.10.1' }}
+      #允许 LAN 设备访问 Tailscale 内网
+      WRT_LAN_TAILNET: ${{ inputs.LAN_TAILNET || false }}
+      #允许 WAN 访问路由器本机 Dropbear SSH
+      WRT_WAN_SSH: ${{ inputs.WAN_SSH || false }}
+      WRT_WAN_SSH_PORT: ${{ inputs.WAN_SSH_PORT || '22' }}
+      WRT_WAN_SSH_SOURCE: ${{ inputs.WAN_SSH_SOURCE }}
+      WRTBAK_DEVICE_ALIAS: ${{ inputs.WRTBAK_DEVICE_ALIAS || '' }}
+      WRTBAK_PROXY_PROFILE: ${{ inputs.WRTBAK_PROXY_PROFILE || 'auto' }}
       #默认密码，仅作提示，修改无用
       WRT_PW: 无
       #源码链接
@@ -66,4 +113,6 @@ jobs:
       #仅输出配置文件
       WRT_TEST: ${{inputs.TEST}}
 
-      CI_NAME: ${{github.workflow}}
+      CI_NAME: ${{ contains(fromJSON('["schedule","workflow_run"]'), github.event_name) && format('{0}-AUTO', github.workflow) || format('{0}-MANUAL', github.workflow) }}
+      RUNNER_LABELS: '["ubuntu-latest"]'
+      JOB_TIMEOUT_MINUTES: 360

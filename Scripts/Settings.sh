@@ -1,5 +1,8 @@
 #!/bin/bash
-. $(dirname "$(realpath "$0")")/function.sh
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
+. "$(dirname "$(realpath "$0")")/function.sh"
 #移除luci-app-attendedsysupgrade
 sed -i "/attendedsysupgrade/d" $(find ./feeds/luci/collections/ -type f -name "Makefile")
 #修改默认主题
@@ -42,12 +45,17 @@ sed -i 's/mirrors.vsean.net\/openwrt/mirror.nju.edu.cn\/immortalwrt/g' ./package
 echo "CONFIG_PACKAGE_luci=y" >> ./.config
 echo "CONFIG_LUCI_LANG_zh_Hans=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-theme-$WRT_THEME=y" >> ./.config
-#echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 
 #手动调整的插件
 if [ -n "$WRT_PACKAGE" ]; then
 	echo -e "$WRT_PACKAGE" >> ./.config
 fi
+
+# 强制关闭在部分 feed 组合里会触发 LuCI/APK 打包失败的 ramfree。
+sed -i '/^CONFIG_PACKAGE_luci-app-ramfree=/d' ./.config
+sed -i '/^# CONFIG_PACKAGE_luci-app-ramfree is not set$/d' ./.config
+echo "# CONFIG_PACKAGE_luci-app-ramfree is not set" >> ./.config
 
 #高通平台调整
 DTS_PATH="./target/linux/qualcommax/dts/"

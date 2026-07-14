@@ -1,0 +1,215 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+. /lib/functions.sh
+
+TAILSCALE_IPV4_RANGE="100.64.0.0/10"
+TAILSCALE_IPV6_RANGE="fd7a:115c:a1e0::/48"
+NIKKI_HIJACK_TEMPLATE="/etc/nikki/ucode/hijack.ut"
+QUAD100_RAW_ENDPOINT="udp://100.100.100.100:53"
+QUAD100_TAILSCALE_ENDPOINT="udp://100.100.100.100:53#tailscale0"
+
+ensure_list_entry() {
+	local option="$1"
+	local value="$2"
+	local current
+
+	current="$(uci -q get "$option" 2>/dev/null | tr ' ' '\n')"
+	printf '%s\n' "$current" | grep -Fx "$value" >/dev/null 2>&1 && return 0
+
+	uci add_list "$option=$value"
+	changed=1
+}
+
+reset_managed_lan_bypass_sections() {
+	local sections
+
+	sections="$(
+		uci show nikki 2>/dev/null |
+			sed -n "s/^nikki\.\(@lan_access_control\[[0-9]\+\]\)\.tailscale_managed='1'$/\1/p"
+	)"
+
+	[ -n "$sections" ] || return 0
+
+	for section in $sections; do
+		uci -q delete "nikki.$section"
+		changed=1
+	done
+}
+
+append_bypass_value() {
+	local value="$1"
+	local option="$2"
+
+	[ -n "$value" ] || return 0
+	uci add_list "$option=$value"
+}
+
+create_managed_lan_bypass_section() {
+	local section="$1"
+	local enabled sid ip_list ip6_list mac_list
+
+	config_get enabled "$section" enabled '0'
+	[ "$enabled" = '1' ] || return 0
+
+	ip_list="$(uci -q get "tailscale.$section.ip" 2>/dev/null || true)"
+	ip6_list="$(uci -q get "tailscale.$section.ip6" 2>/dev/null || true)"
+	mac_list="$(uci -q get "tailscale.$section.mac" 2>/dev/null || true)"
+	[ -n "$ip_list$ip6_list$mac_list" ] || return 0
+
+	sid="$(uci add nikki lan_access_control)"
+	uci set "nikki.$sid.enabled=1"
+	uci set "nikki.$sid.dns=0"
+	uci set "nikki.$sid.proxy=0"
+	uci set "nikki.$sid.tailscale_managed=1"
+
+	config_list_foreach "$section" ip append_bypass_value "nikki.$sid.ip"
+	config_list_foreach "$section" ip6 append_bypass_value "nikki.$sid.ip6"
+	config_list_foreach "$section" mac append_bypass_value "nikki.$sid.mac"
+	changed=1
+}
+
+sync_lan_bypass_hosts() {
+	[ -f "/etc/config/tailscale" ] || return 0
+
+	config_load tailscale
+	reset_managed_lan_bypass_sections
+	config_foreach create_managed_lan_bypass_section lan_bypass_host
+}
+
+runtime_has_tailscale_ranges() {
+	command -v nft >/dev/null 2>&1 || return 1
+	nft list table inet nikki 2>/dev/null | grep -F "$TAILSCALE_IPV4_RANGE" >/dev/null 2>&1 || return 1
+	nft list table inet nikki 2>/dev/null | grep -E 'fd7a:115c:a1e0::/48|fc00::/7' >/dev/null 2>&1 || return 1
+	return 0
+}
+
+template_has_dns_bypass() {
+	[ -f "$NIKKI_HIJACK_TEMPLATE" ] || return 1
+	grep -F "ip daddr $TAILSCALE_IPV4_RANGE return" "$NIKKI_HIJACK_TEMPLATE" >/dev/null 2>&1 || return 1
+	grep -F "ip6 daddr $TAILSCALE_IPV6_RANGE return" "$NIKKI_HIJACK_TEMPLATE" >/dev/null 2>&1 || return 1
+	return 0
+}
+
+runtime_has_dns_bypass() {
+	command -v nft >/dev/null 2>&1 || return 1
+	nft list chain inet nikki router_dns_hijack 2>/dev/null | grep -F "ip daddr $TAILSCALE_IPV4_RANGE return" >/dev/null 2>&1 || return 1
+	nft list chain inet nikki router_dns_hijack 2>/dev/null | grep -F "ip6 daddr $TAILSCALE_IPV6_RANGE return" >/dev/null 2>&1 || return 1
+	return 0
+}
+
+patch_hijack_template() {
+	local tmp
+
+	[ -f "$NIKKI_HIJACK_TEMPLATE" ] || return 0
+	template_has_dns_bypass && return 0
+
+	tmp="$(mktemp)"
+	awk -v ipv4="$TAILSCALE_IPV4_RANGE" -v ipv6="$TAILSCALE_IPV6_RANGE" '
+		{
+			print
+			if ($0 ~ /^\tchain router_dns_hijack \{$/) {
+				print "\t\tip daddr " ipv4 " return"
+				print "\t\tip6 daddr " ipv6 " return"
+			}
+		}
+	' "$NIKKI_HIJACK_TEMPLATE" >"$tmp"
+
+	if ! cmp -s "$NIKKI_HIJACK_TEMPLATE" "$tmp"; then
+		cat "$tmp" >"$NIKKI_HIJACK_TEMPLATE"
+		changed=1
+	fi
+
+	rm -f "$tmp"
+}
+
+reapply_nikki_runtime() {
+	[ -x /etc/init.d/nikki ] || return 0
+
+	/etc/init.d/nikki reload >/dev/null 2>&1 ||
+		/etc/init.d/nikki restart >/dev/null 2>&1 ||
+		true
+}
+
+current_profile_path() {
+	local profile
+
+	profile="$(uci -q get nikki.config.profile 2>/dev/null || true)"
+	case "$profile" in
+		file:*)
+			printf '/etc/nikki/profiles/%s\n' "${profile#file:}"
+			;;
+		/*)
+			printf '%s\n' "$profile"
+			;;
+	esac
+}
+
+patch_magicdns_profile_file() {
+	local file="$1"
+	local tmp
+
+	[ -n "$file" ] || return 0
+	[ -f "$file" ] || return 0
+
+	grep -F "$QUAD100_TAILSCALE_ENDPOINT" "$file" >/dev/null 2>&1 && return 0
+	grep -F "$QUAD100_RAW_ENDPOINT" "$file" >/dev/null 2>&1 || return 0
+
+	tmp="$(mktemp)"
+	sed "s|$QUAD100_RAW_ENDPOINT|$QUAD100_TAILSCALE_ENDPOINT|g" "$file" >"$tmp"
+
+	if ! cmp -s "$file" "$tmp"; then
+		cat "$tmp" >"$file"
+		changed=1
+	fi
+
+	rm -f "$tmp"
+}
+
+patch_magicdns_policy_interface() {
+	patch_magicdns_profile_file "$(current_profile_path)"
+	patch_magicdns_profile_file "/etc/nikki/run/config.yaml"
+}
+
+apply_guard() {
+	[ -f "/etc/config/nikki" ] || return 0
+	command -v uci >/dev/null 2>&1 || return 0
+	uci -q get "nikki.@router_access_control[0].enabled" >/dev/null 2>&1 || return 0
+
+	changed=0
+	ensure_list_entry "nikki.proxy.reserved_ip" "$TAILSCALE_IPV4_RANGE"
+	ensure_list_entry "nikki.proxy.reserved_ip6" "$TAILSCALE_IPV6_RANGE"
+	ensure_list_entry "nikki.@router_access_control[0].cgroup" "services/dnsmasq"
+	ensure_list_entry "nikki.@router_access_control[0].cgroup" "services/tailscale"
+	ensure_list_entry "nikki.@router_access_control[0].cgroup" "services/mosdns"
+	ensure_list_entry "nikki.@router_access_control[0].user" "dnsmasq"
+	ensure_list_entry "nikki.@router_access_control[0].user" "mosdns"
+	ensure_list_entry "nikki.@router_access_control[0].group" "dnsmasq"
+	ensure_list_entry "nikki.@router_access_control[0].group" "mosdns"
+	sync_lan_bypass_hosts
+	patch_hijack_template
+	patch_magicdns_policy_interface
+
+	if [ "$changed" -eq 1 ]; then
+		uci commit nikki
+		reapply_nikki_runtime
+	fi
+
+	if ! runtime_has_tailscale_ranges; then
+		reapply_nikki_runtime
+	fi
+
+	if ! runtime_has_dns_bypass; then
+		reapply_nikki_runtime
+	fi
+}
+
+start() {
+	apply_guard
+}
+
+restart() {
+	start
+}

@@ -1,0 +1,37 @@
+name: RE-CS-07 Build Only
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/WRT-CORE.yml
+    with:
+      WRT_CONFIG: IPQ60XX-RE-CS-07-NOWIFI
+      WRT_THEME: argon
+      WRT_NAME: RE-CS-07
+      WRT_SSID: RE-CS-07
+      WRT_WORD: 12345678
+      WRT_IP: 192.168.10.1
+      WRT_PW: 无
+      WRT_REPO: https://github.com/VIKINGYFY/immortalwrt.git
+      WRT_BRANCH: main
+      WRT_SOURCE: VIKINGYFY/immortalwrt
+      WRT_BUILD_ONLY: true
+      WRT_EXPECTED_DEVICE: jdcloud_re-cs-07
+      WRTBAK_FIRSTBOOT_AUTO_ENABLED: '0'
+      WRTBAK_DEVICE_ALIAS: home-re-cs-07
+      CI_NAME: RE-CS-07-BUILD
+      RUNNER_LABELS: '["ubuntu-latest"]'
+      JOB_TIMEOUT_MINUTES: 360
+    secrets:
+      WRTBAK_R2_ENDPOINT: ${{ secrets.WRTBAK_R2_ENDPOINT }}
+      WRTBAK_R2_REGION: ${{ secrets.WRTBAK_R2_REGION }}
+      WRTBAK_R2_BUCKET: ${{ secrets.WRTBAK_R2_BUCKET }}
+      WRTBAK_R2_PREFIX: ${{ secrets.WRTBAK_R2_PREFIX }}
+      WRTBAK_R2_ACCESS_KEY_ID: ${{ secrets.WRTBAK_R2_ACCESS_KEY_ID }}
+      WRTBAK_R2_SECRET_ACCESS_KEY: ${{ secrets.WRTBAK_R2_SECRET_ACCESS_KEY }}

@@ -1,0 +1,8 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+rm -rf /.config
+ln -sf /root/.config /.config
+/usr/local/bin/viewturbocore --start
+
+exit 0

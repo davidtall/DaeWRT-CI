@@ -1,0 +1,6 @@
+#!/bin/sh
+
+/etc/init.d/tailscale-accept-dns-guard enable >/dev/null 2>&1 || true
+/etc/init.d/tailscale-accept-dns-guard start >/dev/null 2>&1 || true
+
+exit 0

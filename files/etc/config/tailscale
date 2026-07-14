@@ -1,0 +1,18 @@
+config settings 'settings'
+	option log_stderr '1'
+	option log_stdout '1'
+	option port '41641'
+	option state_file '/etc/tailscale/tailscaled.state'
+	option fw_mode 'nftables'
+	option disable_magic_dns '1'
+
+config lan_bypass_host
+	option enabled '0'
+
+config lan_to_tailnet 'lan_to_tailnet'
+	option enabled '0'
+	option cidr4 '100.64.0.0/10'
+	option cidr6 'fd7a:115c:a1e0::/48'
+	option dns_domain 'hs.jmsu.top'
+	option magicdns '100.100.100.100'
+	option masq '1'

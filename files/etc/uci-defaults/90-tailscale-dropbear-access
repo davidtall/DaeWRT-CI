@@ -1,0 +1,33 @@
+#!/bin/sh
+
+# tailscaled owns tailscale0. Do not create a netifd interface for it,
+# otherwise netifd can remove the Tailscale-assigned 100.64/32 address.
+uci -q delete network.tailscale >/dev/null 2>&1 || true
+uci commit network >/dev/null 2>&1 || true
+
+# Keep Dropbear reachable on router-local addresses, including tailscale0.
+# WAN access remains controlled by fw4's WAN zone.
+uci set dropbear.main='dropbear'
+uci set dropbear.main.enable='1'
+uci set dropbear.main.Port='22'
+uci -q delete dropbear.main.Interface >/dev/null 2>&1 || true
+uci -q delete dropbear.main.DirectInterface >/dev/null 2>&1 || true
+uci -q delete dropbear.main._direct >/dev/null 2>&1 || true
+uci commit dropbear >/dev/null 2>&1 || true
+
+# Allow tailnet clients to reach services on the router itself, but do not
+# turn the router into a tailnet-to-LAN forwarder by default.
+uci -q delete firewall.tailscale >/dev/null 2>&1 || true
+uci set firewall.tailscale='zone'
+uci set firewall.tailscale.name='tailscale'
+uci add_list firewall.tailscale.device='tailscale0'
+uci set firewall.tailscale.input='ACCEPT'
+uci set firewall.tailscale.output='ACCEPT'
+uci set firewall.tailscale.forward='REJECT'
+uci commit firewall >/dev/null 2>&1 || true
+
+[ -x /etc/init.d/dropbear ] && /etc/init.d/dropbear enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/dropbear ] && /etc/init.d/dropbear restart >/dev/null 2>&1 || true
+[ -x /etc/init.d/firewall ] && /etc/init.d/firewall restart >/dev/null 2>&1 || true
+
+exit 0

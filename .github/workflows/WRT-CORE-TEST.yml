@@ -94,6 +94,6 @@ jobs:
       - name: Custom Settings
         run: |
           . $GITHUB_WORKSPACE/Scripts/function.sh
-          cd ./wrt/    
+          cd ./wrt/
           generate_config && cat .config
-     
+

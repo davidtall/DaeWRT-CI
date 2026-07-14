@@ -268,7 +268,8 @@ function install_dependencies() {
 	ln -svf "/usr/lib/go-1.26/bin/go" "/usr/bin/go"
 	ln -svf "/usr/lib/go-1.26/bin/gofmt" "/usr/bin/gofmt"
 	if [ -n "$CHN_NET" ]; then
-		go env -w GOPROXY=https://goproxy.cn,direct
+		go env -w GOPROXY="https://proxy.golang.org|https://goproxy.cn|direct"
+		go env -w GOSUMDB=sum.golang.org
 	fi
 
 	apt install gh -y

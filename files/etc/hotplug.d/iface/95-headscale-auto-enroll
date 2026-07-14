@@ -1,0 +1,8 @@
+#!/bin/sh
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ -x /etc/init.d/headscale-auto-enroll ] || exit 0
+
+/etc/init.d/headscale-auto-enroll restart >/dev/null 2>&1 || true
+
+exit 0

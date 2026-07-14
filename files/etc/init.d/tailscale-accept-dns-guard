@@ -1,0 +1,41 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+ensure_tailscale_uci_config() {
+	[ -f "/etc/config/tailscale" ] && return 0
+
+	cat >/etc/config/tailscale <<'EOF'
+config settings 'settings'
+	option log_stderr '1'
+	option log_stdout '1'
+	option port '41641'
+	option state_file '/etc/tailscale/tailscaled.state'
+	option fw_mode 'nftables'
+EOF
+}
+
+retry_set_accept_dns() {
+	local attempt=0
+
+	command -v tailscale >/dev/null 2>&1 || return 0
+	pgrep -x tailscaled >/dev/null 2>&1 || return 0
+
+	while [ "$attempt" -lt 5 ]; do
+		tailscale set --accept-dns=false >/dev/null 2>&1 && return 0
+		attempt=$((attempt + 1))
+		sleep 2
+	done
+
+	return 0
+}
+
+start() {
+	ensure_tailscale_uci_config
+	retry_set_accept_dns
+}
+
+restart() {
+	start
+}

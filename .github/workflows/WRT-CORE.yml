@@ -1,3 +1,6 @@
+﻿# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 VIKINGYFY
+
 #云编译公用核心
 name: WRT-CORE
 
@@ -31,6 +34,10 @@ on:
       WRT_BRANCH:
         required: true
         type: string
+      WRT_COMMIT:
+        required: false
+        type: string
+        default: ''
       WRT_SOURCE:
         required: false
         type: string
@@ -40,14 +47,136 @@ on:
       WRT_TEST:
         required: false
         type: string
+      WRT_BUILD_ONLY:
+        required: false
+        type: boolean
+        default: false
+      WRT_SPLIT_DEVICE_ARTIFACTS:
+        required: false
+        type: boolean
+        default: true
+      WRT_EXPECTED_DEVICE:
+        required: false
+        type: string
+        default: ''
+      WRT_LAN_TAILNET:
+        required: false
+        type: boolean
+        default: false
+      WRT_CPE_5G:
+        required: false
+        type: boolean
+        default: false
+      WRT_FEATURE_OVERLAY:
+        required: false
+        type: boolean
+        default: true
+      WRT_REQUIRED_DEVICE:
+        required: false
+        type: string
+        default: ''
+      WRT_WAN_SSH:
+        required: false
+        type: boolean
+        default: false
+      WRT_WAN_SSH_PORT:
+        required: false
+        type: string
+        default: '22'
+      WRT_WAN_SSH_SOURCE:
+        required: false
+        type: string
+      WRTBAK_DEVICE_ALIAS:
+        required: false
+        type: string
+        default: ''
+      WRTBAK_PROXY_PROFILE:
+        required: false
+        type: string
+        default: 'auto'
+      WRTBAK_SITE:
+        required: false
+        type: string
+        default: ''
+      WRTBAK_PROXY_ARTIFACTS_ENABLED:
+        required: false
+        type: string
+        default: '1'
+      WRTBAK_PROXY_UPDATE_MODE:
+        required: false
+        type: string
+        default: 'review-required'
+      WRTBAK_FIRSTBOOT_AUTO_ENABLED:
+        required: false
+        type: string
+        default: '0'
+      WRTBAK_FIRSTBOOT_AUTO_TARGET:
+        required: false
+        type: string
+        default: 's3'
+      WRTBAK_FIRSTBOOT_AUTO_ATTEMPTS:
+        required: false
+        type: string
+        default: '18'
+      WRTBAK_FIRSTBOOT_AUTO_SLEEP:
+        required: false
+        type: string
+        default: '10'
+      WRTBAK_FIRSTBOOT_AUTO_REBOOT:
+        required: false
+        type: string
+        default: '1'
       CI_NAME:
         required: false
         type: string
       WRT_ARCH:
         required: false
         type: string
+      RUNNER_LABELS:
+        required: false
+        type: string
+        default: '["ubuntu-latest"]'
+      JOB_TIMEOUT_MINUTES:
+        required: false
+        type: number
+        default: 360
+    secrets:
+      HEADSCALE_OPENWRT_AUTHKEY:
+        required: false
+      OPENWRT_DROPBEAR_AUTHORIZED_KEYS:
+        required: false
+      WRTBAK_R2_ENDPOINT:
+        required: false
+      WRTBAK_R2_REGION:
+        required: false
+      WRTBAK_R2_BUCKET:
+        required: false
+      WRTBAK_R2_PREFIX:
+        required: false
+      WRTBAK_R2_ACCESS_KEY_ID:
+        required: false
+      WRTBAK_R2_SECRET_ACCESS_KEY:
+        required: false
+      WRTBAK_HOME_PROXY_URL:
+        required: false
+      WRTBAK_OFFICE_PROXY_URL:
+        required: false
+      WRTBAK_DORM_PROXY_URL:
+        required: false
 env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  HEADSCALE_OPENWRT_AUTHKEY: ${{secrets.HEADSCALE_OPENWRT_AUTHKEY}}
+  OPENWRT_DROPBEAR_AUTHORIZED_KEYS: ${{secrets.OPENWRT_DROPBEAR_AUTHORIZED_KEYS}}
+  WRTBAK_R2_ENDPOINT: ${{secrets.WRTBAK_R2_ENDPOINT}}
+  WRTBAK_R2_REGION: ${{secrets.WRTBAK_R2_REGION}}
+  WRTBAK_R2_BUCKET: ${{secrets.WRTBAK_R2_BUCKET}}
+  WRTBAK_R2_PREFIX: ${{secrets.WRTBAK_R2_PREFIX}}
+  WRTBAK_R2_ACCESS_KEY_ID: ${{secrets.WRTBAK_R2_ACCESS_KEY_ID}}
+  WRTBAK_R2_SECRET_ACCESS_KEY: ${{secrets.WRTBAK_R2_SECRET_ACCESS_KEY}}
+  WRTBAK_HOME_PROXY_URL: ${{secrets.WRTBAK_HOME_PROXY_URL}}
+  WRTBAK_OFFICE_PROXY_URL: ${{secrets.WRTBAK_OFFICE_PROXY_URL}}
+  WRTBAK_DORM_PROXY_URL: ${{secrets.WRTBAK_DORM_PROXY_URL}}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   WRT_CONFIG: ${{inputs.WRT_CONFIG}}
   WRT_THEME: ${{inputs.WRT_THEME}}
   WRT_NAME: ${{inputs.WRT_NAME}}
@@ -57,24 +186,59 @@ env:
   WRT_PW: ${{inputs.WRT_PW}}
   WRT_REPO: ${{inputs.WRT_REPO}}
   WRT_BRANCH: ${{inputs.WRT_BRANCH}}
+  WRT_COMMIT: ${{inputs.WRT_COMMIT}}
+  WRT_SOURCE: ${{inputs.WRT_SOURCE}}
   WRT_PACKAGE: ${{inputs.WRT_PACKAGE}}
   WRT_TEST: ${{inputs.WRT_TEST}}
+  WRT_BUILD_ONLY: ${{inputs.WRT_BUILD_ONLY}}
+  WRT_SPLIT_DEVICE_ARTIFACTS: ${{inputs.WRT_SPLIT_DEVICE_ARTIFACTS}}
+  WRT_EXPECTED_DEVICE: ${{inputs.WRT_EXPECTED_DEVICE}}
+  WRT_LAN_TAILNET: ${{inputs.WRT_LAN_TAILNET}}
+  WRT_CPE_5G: ${{inputs.WRT_CPE_5G}}
+  WRT_FEATURE_OVERLAY: ${{inputs.WRT_FEATURE_OVERLAY}}
+  WRT_REQUIRED_DEVICE: ${{inputs.WRT_REQUIRED_DEVICE}}
+  WRT_WAN_SSH: ${{inputs.WRT_WAN_SSH}}
+  WRT_WAN_SSH_PORT: ${{inputs.WRT_WAN_SSH_PORT}}
+  WRT_WAN_SSH_SOURCE: ${{inputs.WRT_WAN_SSH_SOURCE}}
+  WRTBAK_DEVICE_ALIAS: ${{inputs.WRTBAK_DEVICE_ALIAS}}
+  WRTBAK_PROXY_PROFILE: ${{inputs.WRTBAK_PROXY_PROFILE}}
+  WRTBAK_SITE: ${{inputs.WRTBAK_SITE}}
+  WRTBAK_PROXY_ARTIFACTS_ENABLED: ${{inputs.WRTBAK_PROXY_ARTIFACTS_ENABLED}}
+  WRTBAK_PROXY_UPDATE_MODE: ${{inputs.WRTBAK_PROXY_UPDATE_MODE}}
+  WRTBAK_FIRSTBOOT_AUTO_ENABLED: ${{inputs.WRTBAK_FIRSTBOOT_AUTO_ENABLED}}
+  WRTBAK_FIRSTBOOT_AUTO_TARGET: ${{inputs.WRTBAK_FIRSTBOOT_AUTO_TARGET}}
+  WRTBAK_FIRSTBOOT_AUTO_ATTEMPTS: ${{inputs.WRTBAK_FIRSTBOOT_AUTO_ATTEMPTS}}
+  WRTBAK_FIRSTBOOT_AUTO_SLEEP: ${{inputs.WRTBAK_FIRSTBOOT_AUTO_SLEEP}}
+  WRTBAK_FIRSTBOOT_AUTO_REBOOT: ${{inputs.WRTBAK_FIRSTBOOT_AUTO_REBOOT}}
   WRT_DIR: 'wrt'
   CI_NAME: ${{inputs.CI_NAME}}
   WRT_ARCH: ${{inputs.WRT_ARCH}}
+  WRT_PRIVATE_BUILD: 'false'
+  WRT_PRIVATE_BUILD_REASON: ''
+  WRT_ARTIFACT_PRIVACY_SUFFIX: public
 
 jobs:
   core:
     name: ${{inputs.WRT_SOURCE}}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.RUNNER_LABELS) }}
+    timeout-minutes: ${{ inputs.JOB_TIMEOUT_MINUTES }}
+    permissions:
+      contents: write
+      actions: write
     steps:
       - name: Install BC
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo -E apt -yqq install bc
+          if command -v sudo >/dev/null 2>&1; then
+            SUDO="sudo -E"
+          else
+            SUDO=""
+          fi
+          ${SUDO} apt -yqq install bc
 
       - name: Free Disk Space
+        if: ${{ !contains(inputs.RUNNER_LABELS, 'self-hosted') }}
         uses: endersonmenezes/free-disk-space@v2
         with:
           remove_android: true
@@ -89,25 +253,89 @@ jobs:
 
       - name: Checkout Projects
         uses: actions/checkout@main
+
+      - name: Validate LAN IP
+        run: |
+          LAN_IP="${WRT_IP:-192.168.10.1}"
+          "$GITHUB_WORKSPACE/Scripts/ValidateLanIp.sh" "$LAN_IP"
+          echo "WRT_IP=$LAN_IP" >> "$GITHUB_ENV"
+
       - name: Initialization Environment
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo -E apt -yqq purge firefox
-          sudo -E apt -yqq update
-          sudo -E apt -yqq full-upgrade
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq autoclean
-          sudo -E apt -yqq clean
-          sudo -E apt -yqq install dos2unix python3-netifaces libfuse-dev
+          . $GITHUB_WORKSPACE/Scripts/retry.sh
+          if command -v sudo >/dev/null 2>&1; then
+            SUDO="sudo -E"
+          else
+            SUDO=""
+          fi
+
+          run_with_sudo() {
+            if [ -n "$SUDO" ]; then
+              sudo -E "$@"
+            else
+              "$@"
+            fi
+          }
+
+          run_apt() {
+            run_with_sudo apt -yqq "$@"
+          }
+
+          reset_ubuntu_mirrors() {
+            echo "WARN: resetting Ubuntu mirrors to official archives before retrying apt update" >&2
+
+            if [ -f /etc/apt/sources.list ]; then
+              run_with_sudo sed -i \
+                -e 's,https\?://mirrors\.cloud\.tencent\.com/ubuntu/,http://archive.ubuntu.com/ubuntu/,g' \
+                -e 's,https\?://mirrors\.ustc\.edu\.cn/ubuntu/,http://archive.ubuntu.com/ubuntu/,g' \
+                -e 's,https\?://[^ ]*/ubuntu \([^ ]*-security\) ,http://security.ubuntu.com/ubuntu \1 ,g' \
+                /etc/apt/sources.list
+            fi
+
+            while IFS= read -r sources_file; do
+              run_with_sudo sed -i \
+                -e 's,https\?://mirrors\.cloud\.tencent\.com/ubuntu/,http://archive.ubuntu.com/ubuntu/,g' \
+                -e 's,https\?://mirrors\.ustc\.edu\.cn/ubuntu/,http://archive.ubuntu.com/ubuntu/,g' \
+                -e '/^URIs: /s,https\?://mirrors\.cloud\.tencent\.com/ubuntu/,http://archive.ubuntu.com/ubuntu/,g' \
+                "$sources_file"
+            done < <(find /etc/apt -maxdepth 2 -type f \( -name '*.sources' -o -name '*.list' \) 2>/dev/null)
+
+            run_with_sudo rm -rf /var/lib/apt/lists/*
+          }
+
+          apt_retry_update() {
+            if retry_cmd 3 15 run_apt update; then
+              return 0
+            fi
+
+            if grep -RqsE 'mirrors\.cloud\.tencent\.com/ubuntu|mirrors\.ustc\.edu\.cn/ubuntu' /etc/apt/sources.list /etc/apt/sources.list.d /etc/apt/*.sources 2>/dev/null; then
+              reset_ubuntu_mirrors
+            fi
+
+            retry_cmd 3 15 run_apt update
+          }
+
+          run_apt purge firefox || true
+          apt_retry_update
+          retry_cmd 3 15 run_apt full-upgrade
+          run_apt autoremove --purge
+          run_apt autoclean
+          run_apt clean
+          retry_cmd 3 15 run_apt install dos2unix python3-netifaces libfuse-dev
           dos2unix "$GITHUB_WORKSPACE/Scripts/init_build_environment.sh"
-          sudo bash "$GITHUB_WORKSPACE/Scripts/init_build_environment.sh"
-          sudo -E systemctl daemon-reload
-          sudo -E timedatectl set-timezone "Asia/Shanghai"
+          ${SUDO} bash "$GITHUB_WORKSPACE/Scripts/init_build_environment.sh"
           if command -v go >/dev/null 2>&1; then
             echo "GO_INSTALLED=true" >> "$GITHUB_ENV"
           else
             echo "GO_INSTALLED=false" >> "$GITHUB_ENV"
+          fi
+          if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+            ${SUDO} systemctl daemon-reload
+          fi
+          if command -v timedatectl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+            ${SUDO} timedatectl set-timezone "Asia/Shanghai"
           fi
 #          sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
 #          sudo mkdir -p /mnt/build_wrt
@@ -119,14 +347,18 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
-      - run: go version
+
+      - name: Check Go
+        run: go version
 
       - name: Initialization Values
         run: |
           echo "WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d-%H.%M.%S")" >> $GITHUB_ENV
           echo "WRT_MARK=${GITHUB_REPOSITORY%%/*}" >> $GITHUB_ENV
-          echo "WRT_INFO=${WRT_SOURCE%%/*}" >> $GITHUB_ENV
           echo "WRT_TARGET=$(grep -m 1 -oP '^CONFIG_TARGET_\K[\w]+(?=\=y)' ./Config/$WRT_CONFIG.txt)" >> $GITHUB_ENV
+          WRT_INFO_VALUE="${WRT_SOURCE%%/*}"
+          [ -n "$WRT_INFO_VALUE" ] || WRT_INFO_VALUE="$(grep -m 1 -oP '^CONFIG_TARGET_\K[\w]+(?=\=y)' ./Config/$WRT_CONFIG.txt)"
+          echo "WRT_INFO=$WRT_INFO_VALUE" >> $GITHUB_ENV
           echo "WRT_KVER=none" >> $GITHUB_ENV
           echo "WRT_LIST=none" >> $GITHUB_ENV
 
@@ -136,15 +368,57 @@ jobs:
             echo "WRT_ARCH=$WRT_ARCH" >> $GITHUB_ENV
           }
           echo "$WRT_REPO/$WRT_BRANCH" > "$GITHUB_WORKSPACE/repo_flag"
+
+      - name: Configure Go Module Access
+        run: |
+          echo "GOPROXY=https://proxy.golang.org|https://goproxy.cn|direct" >> $GITHUB_ENV
+          echo "GOSUMDB=sum.golang.org" >> $GITHUB_ENV
+          echo "GOPROXY=https://proxy.golang.org|https://goproxy.cn|direct"
+          echo "GOSUMDB=sum.golang.org"
       - name: Clone Code
         run: |
-          git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
+          . $GITHUB_WORKSPACE/Scripts/retry.sh
+          retry_cmd 5 15 git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
 
-          cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
+          if [ -n "$WRT_COMMIT" ]; then
+            if [ "${#WRT_COMMIT}" -ne 40 ] || printf '%s' "$WRT_COMMIT" | grep -Eq '[^0-9a-fA-F]'; then
+              echo "ERROR: WRT_COMMIT must be a full 40-character hexadecimal commit SHA" >&2
+              exit 1
+            fi
+
+            retry_cmd 5 15 git -C ./wrt fetch --depth=1 origin "$WRT_COMMIT"
+            (
+              cd ./wrt
+              git checkout --detach "$WRT_COMMIT"
+              resolved_commit="$(git rev-parse HEAD)"
+              requested_commit="$(printf '%s' "$WRT_COMMIT" | tr 'A-F' 'a-f')"
+              if [ "$resolved_commit" != "$requested_commit" ]; then
+                echo "ERROR: requested source commit $requested_commit but checked out $resolved_commit" >&2
+                exit 1
+              fi
+            )
+          fi
+
+          $GITHUB_WORKSPACE/Scripts/patch_libiwrt_k612_cacheline_assert.sh "./wrt" "$WRT_SOURCE" "$WRT_BRANCH"
+          $GITHUB_WORKSPACE/Scripts/fix_qca8k_assisted_learning_patch.sh "./wrt"
+
+          echo "WRT_HASH=$(git -C ./wrt rev-parse HEAD)" >> $GITHUB_ENV
+
+          # Remove mainland mirrors so build source resolution stays consistent across runners.
+          PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
+          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
+          fi
 
       - name: Check Scripts
         run: |
           find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+
+      - name: Repository Smoke Tests
+        run: |
+          for test_file in ./tests/test_*.sh; do
+            bash "$test_file"
+          done
 
       - name: Cache Dependencies
         uses: actions/cache@v4
@@ -152,9 +426,11 @@ jobs:
           path: |
             ./wrt/.ccache
             ./wrt/staging_dir
-          key: ${{ env.WRT_ARCH }}-${{ hashFiles('**/repo_flag') }}-${{ env.WRT_DATE }}
+            ./wrt/dl/go-mod-cache
+            ./wrt/tmp/go-build
+          key: ${{ env.WRT_ARCH }}-${{ hashFiles('repo_flag') }}-${{ env.WRT_DATE }}
           restore-keys: |
-            ${{ env.WRT_ARCH }}-${{ hashFiles('**/repo_flag') }}-
+            ${{ env.WRT_ARCH }}-${{ hashFiles('repo_flag') }}-
             ${{ env.WRT_ARCH }}-
 
       - name: Refresh the cache
@@ -169,10 +445,11 @@ jobs:
 
       - name: Update Feeds
         run: |
+          . $GITHUB_WORKSPACE/Scripts/retry.sh
           cd ./wrt/
 
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          retry_cmd 5 15 ./scripts/feeds update -a
+          retry_cmd 5 15 ./scripts/feeds install -a
 
       - name: Custom Packages
         run: |
@@ -180,17 +457,108 @@ jobs:
 
           $GITHUB_WORKSPACE/Scripts/Packages.sh
           $GITHUB_WORKSPACE/Scripts/Handles.sh
+          $GITHUB_WORKSPACE/Scripts/fetch_uv_runtime.sh
+          $GITHUB_WORKSPACE/Scripts/fetch_viewturbocore.sh
+          cd $GITHUB_WORKSPACE
+          mkdir -p ./wrt/files
+          if [ "${WRT_FEATURE_OVERLAY:-true}" = "true" ]; then
+            cp -rf ./files/. ./wrt/files/
+            $GITHUB_WORKSPACE/Scripts/ConfigureCpe5G.sh "$GITHUB_WORKSPACE/wrt/files" "${WRT_CPE_5G:-false}"
+            $GITHUB_WORKSPACE/Scripts/ConfigureLanTailnetGateway.sh "$GITHUB_WORKSPACE/wrt/files" "${WRT_LAN_TAILNET:-false}"
+            $GITHUB_WORKSPACE/Scripts/ConfigureWanDropbearAccess.sh "$GITHUB_WORKSPACE/wrt/files" "${WRT_WAN_SSH:-false}" "${WRT_WAN_SSH_PORT:-22}" "${WRT_WAN_SSH_SOURCE:-}"
+            $GITHUB_WORKSPACE/Scripts/HeadscaleAutoEnroll.sh "$GITHUB_WORKSPACE/wrt/files"
+            $GITHUB_WORKSPACE/Scripts/DropbearAuthorizedKeys.sh "$GITHUB_WORKSPACE/wrt/files"
+            $GITHUB_WORKSPACE/Scripts/WrtbakR2Config.sh "$GITHUB_WORKSPACE/wrt/files"
+            $GITHUB_WORKSPACE/Scripts/PrivateFirmwareGuard.sh "$GITHUB_WORKSPACE/wrt/files" >> "$GITHUB_ENV"
+          else
+            echo "Feature overlay disabled: omitting CPE, Lucky, Tailscale/Headscale and wrtbak overlays"
+          fi
 
       - name: Custom Settings
         run: |
           . $GITHUB_WORKSPACE/Scripts/function.sh
           cd ./wrt/
-          
+
           generate_config && cat .config
-          
+
+          if [ "${WRT_FEATURE_OVERLAY:-true}" != "true" ]; then
+            sed -i -E '/^CONFIG_PACKAGE_(luci-app-lucky|luci-app-tailscale-community|luci-app-wrtbak|tailscale)=/d' .config
+            cat >> .config <<'EOF'
+          # CONFIG_PACKAGE_luci-app-lucky is not set
+          # CONFIG_PACKAGE_luci-app-tailscale-community is not set
+          # CONFIG_PACKAGE_luci-app-wrtbak is not set
+          # CONFIG_PACKAGE_tailscale is not set
+          EOF
+          fi
+
           $GITHUB_WORKSPACE/Scripts/Settings.sh
 
-          make defconfig -j$(nproc) && make clean -j$(nproc)
+          make defconfig -j$(nproc)
+          if [ "${WRT_FEATURE_OVERLAY:-true}" = "true" ]; then
+          grep -q '^CONFIG_PACKAGE_tailscale=y$' .config || {
+            echo "ERROR: tailscale was dropped from .config after defconfig"
+            exit 1
+          }
+          grep -q '^CONFIG_PACKAGE_luci-app-tailscale-community=y$' .config || {
+            echo "ERROR: luci-app-tailscale-community was dropped from .config after defconfig"
+            exit 1
+          }
+          grep -q '^CONFIG_PACKAGE_luci-app-wrtbak=y$' .config || {
+            echo "ERROR: luci-app-wrtbak was dropped from .config after defconfig"
+            exit 1
+          }
+          grep -q '^CONFIG_PACKAGE_python3=y$' .config || {
+            echo "ERROR: python3 was dropped from .config after defconfig"
+            exit 1
+          }
+          grep -q '^CONFIG_PACKAGE_python3-venv=y$' .config || {
+            echo "ERROR: python3-venv was dropped from .config after defconfig"
+            exit 1
+          }
+          test -f "$GITHUB_WORKSPACE/files/etc/profile.d/uv.sh" || {
+            echo "ERROR: uv profile script is missing from files overlay"
+            exit 1
+          }
+          test -f "$GITHUB_WORKSPACE/files/etc/init.d/uv-storage" || {
+            echo "ERROR: uv init script is missing from files overlay"
+            exit 1
+          }
+          test -L "$GITHUB_WORKSPACE/files/etc/rc.d/S99uv-storage" || {
+            echo "ERROR: uv init service is not enabled in files overlay"
+            exit 1
+          }
+          test -x "$GITHUB_WORKSPACE/files/usr/bin/uv-runtime-smoke" || {
+            echo "ERROR: uv runtime smoke helper is missing or not executable"
+            exit 1
+          }
+          grep -q 'UV_PYTHON_INSTALL_MIRROR=file:///opt/uv/python-mirror' "$GITHUB_WORKSPACE/files/etc/profile.d/uv.sh" || {
+            echo "ERROR: uv profile script does not export the immutable mirror"
+            exit 1
+          }
+          grep -q '/tmp/uv-env.sh' "$GITHUB_WORKSPACE/files/etc/profile.d/uv.sh" || {
+            echo "ERROR: uv profile script does not source /tmp/uv-env.sh"
+            exit 1
+          }
+          grep -q 'UV_CACHE_DIR' "$GITHUB_WORKSPACE/files/etc/init.d/uv-storage" || {
+            echo "ERROR: uv init script does not write UV_CACHE_DIR"
+            exit 1
+          }
+          grep -q 'UV_PYTHON_INSTALL_DIR' "$GITHUB_WORKSPACE/files/etc/init.d/uv-storage" || {
+            echo "ERROR: uv init script does not write UV_PYTHON_INSTALL_DIR"
+            exit 1
+          }
+          grep -q 'UV_PYTHON_CACHE_DIR' "$GITHUB_WORKSPACE/files/etc/init.d/uv-storage" || {
+            echo "ERROR: uv init script does not write UV_PYTHON_CACHE_DIR"
+            exit 1
+          }
+          fi
+          make clean -j$(nproc)
+
+      - name: Guard Expected Device Config
+        if: inputs.WRT_EXPECTED_DEVICE != ''
+        run: |
+          "$GITHUB_WORKSPACE/Scripts/GuardReCs07Artifact.sh" defconfig \
+            "$GITHUB_WORKSPACE/wrt/.config" "$WRT_EXPECTED_DEVICE"
 
       - name: Download Packages
         if: env.WRT_TEST != 'true'
@@ -198,6 +566,26 @@ jobs:
           cd ./wrt/
 
           make download -j$(nproc)
+
+      - name: Reserve Disk Space Before Compile
+        if: env.WRT_TEST != 'true'
+        run: |
+          cd ./wrt/
+
+          echo "========disk before reserve========"
+          df -h .
+          du -sh .ccache dl tmp staging_dir build_dir 2>/dev/null || true
+
+          if command -v ccache >/dev/null 2>&1; then
+            CCACHE_DIR="$PWD/.ccache" ccache -s || true
+            CCACHE_DIR="$PWD/.ccache" ccache -C || true
+          fi
+
+          rm -rf tmp/go-build tmp/ccache 2>/dev/null || true
+
+          echo "========disk after reserve========"
+          df -h .
+          du -sh .ccache dl tmp staging_dir build_dir 2>/dev/null || true
 
       - name: Compile Firmware
         if: env.WRT_TEST != 'true'
@@ -208,10 +596,19 @@ jobs:
 
       - name: Delete Old Cache
         run: |
-          # 获取缓存列表并删除
-          gh cache list --key ${{ env.WRT_ARCH }}-${{ hashFiles('**/repo_flag') }}- --json key --jq '.[] | .key' | while read -r key; do
-            gh cache delete "$key"
-          done
+          # 获取缓存列表并删除；缓存清理失败不应阻断已完成的构建
+          cache_keys="$(gh cache list --key ${{ env.WRT_ARCH }}-${{ hashFiles('repo_flag') }}- --json key --jq '.[] | .key')" || {
+            echo "WARN: failed to list caches"
+            cache_keys=""
+          }
+
+          if [ -n "$cache_keys" ]; then
+            printf '%s\n' "$cache_keys" | while read -r key; do
+              [ -n "$key" ] || continue
+              gh cache delete "$key" || echo "WARN: failed to delete cache $key"
+            done
+          fi
+
           # 输出缓存状态
           echo "========cache status========"
           echo "ccache: $(du -sh ./wrt/.ccache | cut -f 1)"
@@ -239,44 +636,151 @@ jobs:
             echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
             echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
 
-            find ./bin/targets/ -iregex ".*\(buildinfo\|json\|sha256sums\|packages\)$" -exec rm -rf {} +
+            if [[ -n "$WRT_EXPECTED_DEVICE" ]]; then
+              "$GITHUB_WORKSPACE/Scripts/GuardReCs07Artifact.sh" stage \
+                ./bin/targets ./upload "$WRT_EXPECTED_DEVICE"
+            else
+              find ./bin/targets/ -iregex ".*\(buildinfo\|json\|sha256sums\|packages\)$" -exec rm -rf {} +
 
-            for FILE in $(find ./bin/targets/ -type f -iname "*$WRT_TARGET*") ; do
-              EXT=$(basename $FILE | cut -d '.' -f 2-)
-              NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($WRT_TARGET\).*")
-              NEW_FILE="$NAME"-"$WRT_DATE"."$EXT"
-              mv -f $FILE ./upload/$NEW_FILE
-            done
+              for FILE in $(find ./bin/targets/ -type f -iname "*$WRT_TARGET*") ; do
+                EXT=$(basename $FILE | cut -d '.' -f 2-)
+                NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($WRT_TARGET\).*")
+                NEW_FILE="$NAME"-"$WRT_DATE"."$EXT"
+                mv -f $FILE ./upload/$NEW_FILE
+              done
 
-            find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
+              find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
+            fi
+
+            if [ -n "${WRT_REQUIRED_DEVICE:-}" ]; then
+              find ./upload -maxdepth 1 -type f -name "*${WRT_REQUIRED_DEVICE}*factory*.bin" | grep -q . || {
+                echo "ERROR: missing ${WRT_REQUIRED_DEVICE} factory image" >&2
+                exit 1
+              }
+              find ./upload -maxdepth 1 -type f -name "*${WRT_REQUIRED_DEVICE}*sysupgrade*.bin" | grep -q . || {
+                echo "ERROR: missing ${WRT_REQUIRED_DEVICE} sysupgrade image" >&2
+                exit 1
+              }
+            fi
+
+            jq -n \
+              --arg source_repository "$WRT_REPO" \
+              --arg source_branch "$WRT_BRANCH" \
+              --arg source_commit "$WRT_HASH" \
+              --arg config "$WRT_CONFIG" \
+              --arg required_device "$WRT_REQUIRED_DEVICE" \
+              --arg feature_overlay "$WRT_FEATURE_OVERLAY" \
+              '{source_repository:$source_repository,source_branch:$source_branch,source_commit:$source_commit,config:$config,required_device:$required_device,feature_overlay:$feature_overlay}' \
+              > ./upload/metadata.json
+            (cd ./upload && find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS)
 
             make clean -j$(nproc)
           fi
 
-      - name: Release Firmware
-        uses: softprops/action-gh-release@master
+      - name: Split Public Firmware Artifacts By Device
+        if: inputs.WRT_SPLIT_DEVICE_ARTIFACTS == true && env.WRT_PRIVATE_BUILD != 'true' && env.WRT_BUILD_ONLY != 'true' && env.WRT_TEST != 'true'
+        run: |
+          cd ./wrt/
+          "$GITHUB_WORKSPACE/Scripts/SplitFirmwareArtifacts.sh" ./upload ./artifact-groups
+
+      - name: Upload Firmware Artifact
+        if: inputs.WRT_SPLIT_DEVICE_ARTIFACTS == false || env.WRT_PRIVATE_BUILD == 'true' || env.WRT_BUILD_ONLY == 'true' || env.WRT_TEST == 'true'
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{env.CI_NAME}}-${{env.WRT_CONFIG}}_${{env.WRT_DATE}}
-          files: ./wrt/upload/*.*
-          body: |
-            这是个平台固件包，内含多个设备！
-            请注意选择你需要的设备固件！
-            不要问，刷就完事了！
+          name: ${{env.CI_NAME}}-${{env.WRT_CONFIG}}_${{env.WRT_DATE}}-${{env.WRT_ARTIFACT_PRIVACY_SUFFIX}}
+          path: ./wrt/upload/
+          if-no-files-found: error
+          retention-days: 14
 
-            全系带开源硬件加速，别问了！
+      - name: Upload jdcloud_re-ss-01 Firmware Artifact
+        if: inputs.WRT_SPLIT_DEVICE_ARTIFACTS == true && env.WRT_PRIVATE_BUILD != 'true' && env.WRT_BUILD_ONLY != 'true' && env.WRT_TEST != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.CI_NAME}}-${{env.WRT_CONFIG}}_${{env.WRT_DATE}}-public-jdcloud_re-ss-01
+          path: ./wrt/artifact-groups/jdcloud_re-ss-01/
+          if-no-files-found: ignore
+          retention-days: 14
 
-            源码：${{env.WRT_REPO}}
-            分支：${{env.WRT_BRANCH}}
-            提交：${{env.WRT_HASH}}
+      - name: Upload jdcloud_re-cs-02 Firmware Artifact
+        if: inputs.WRT_SPLIT_DEVICE_ARTIFACTS == true && env.WRT_PRIVATE_BUILD != 'true' && env.WRT_BUILD_ONLY != 'true' && env.WRT_TEST != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.CI_NAME}}-${{env.WRT_CONFIG}}_${{env.WRT_DATE}}-public-jdcloud_re-cs-02
+          path: ./wrt/artifact-groups/jdcloud_re-cs-02/
+          if-no-files-found: ignore
+          retention-days: 14
 
-            配置：${{env.WRT_CONFIG}}
-            平台：${{env.WRT_TARGET}}
+      - name: Upload jdcloud_re-cs-07 Firmware Artifact
+        if: inputs.WRT_SPLIT_DEVICE_ARTIFACTS == true && env.WRT_PRIVATE_BUILD != 'true' && env.WRT_BUILD_ONLY != 'true' && env.WRT_TEST != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.CI_NAME}}-${{env.WRT_CONFIG}}_${{env.WRT_DATE}}-public-jdcloud_re-cs-07
+          path: ./wrt/artifact-groups/jdcloud_re-cs-07/
+          if-no-files-found: ignore
+          retention-days: 14
 
-            登录地址：${{env.WRT_IP}}
-            登录密码：${{env.WRT_PW}}
+      - name: Upload Other Device Firmware Artifact
+        if: inputs.WRT_SPLIT_DEVICE_ARTIFACTS == true && env.WRT_PRIVATE_BUILD != 'true' && env.WRT_BUILD_ONLY != 'true' && env.WRT_TEST != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.CI_NAME}}-${{env.WRT_CONFIG}}_${{env.WRT_DATE}}-public-other-devices
+          path: ./wrt/artifact-groups/other-devices/
+          if-no-files-found: ignore
+          retention-days: 14
 
-            WIFI名称：${{env.WRT_SSID}}
-            WIFI密码：${{env.WRT_WORD}}
+      - name: Release Firmware
+        if: env.WRT_PRIVATE_BUILD != 'true' && env.WRT_BUILD_ONLY != 'true' && env.WRT_TEST != 'true'
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          . $GITHUB_WORKSPACE/Scripts/retry.sh
+          TAG="${CI_NAME}-${WRT_CONFIG}_${WRT_DATE}"
+          RELEASE_PREFIX="${CI_NAME}-${WRT_CONFIG}_"
+          NOTES_FILE="$RUNNER_TEMP/release-notes.txt"
 
-            内核版本：${{env.WRT_KVER}}
-            插件列表：${{env.WRT_LIST}}
+          cat > "$NOTES_FILE" <<EOF
+          这是个平台固件包，内含多个设备！
+          请注意选择你需要的设备固件！
+          不要问，刷就完事了！
+
+          全系带开源硬件加速，别问了！
+
+          源码：${WRT_REPO}
+          分支：${WRT_BRANCH}
+          提交：${WRT_HASH}
+
+          配置：${WRT_CONFIG}
+          平台：${WRT_TARGET}
+
+          登录地址：${WRT_IP}
+          登录密码：${WRT_PW}
+
+          WIFI名称：${WRT_SSID}
+          WIFI密码：${WRT_WORD}
+
+          内核版本：${WRT_KVER}
+          插件列表：${WRT_LIST}
+          EOF
+
+          cd ./wrt/upload
+          assets=(./*)
+          [ -e "${assets[0]}" ] || {
+            echo "ERROR: no release assets found in ./wrt/upload"
+            exit 1
+          }
+
+          while IFS= read -r old_tag; do
+            [ -n "$old_tag" ] || continue
+            case "$old_tag" in
+              "${RELEASE_PREFIX}"*)
+                echo "Deleting old release: $old_tag"
+                retry_cmd 5 15 gh release delete -R "$GITHUB_REPOSITORY" "$old_tag" --yes --cleanup-tag
+                ;;
+            esac
+          done < <(gh release list -R "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName')
+
+          retry_cmd 5 15 gh release create -R "$GITHUB_REPOSITORY" "$TAG" --title "$TAG" --notes-file "$NOTES_FILE"
+
+          for asset in "${assets[@]}"; do
+            retry_cmd 5 15 gh release upload -R "$GITHUB_REPOSITORY" "$TAG" "$asset" --clobber
+          done
