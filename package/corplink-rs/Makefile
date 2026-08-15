@@ -21,9 +21,9 @@ PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
 # corplink-rs links this fork of wireguard-go as a CGO static archive.
-WG_GO_VERSION:=8936d2de0f2587fabeff9be7053eaef719d506d7
+WG_GO_VERSION:=491cec86522a313d90c88d68865d99bcde780e80
 WG_GO_SOURCE:=wireguard-go-$(WG_GO_VERSION).tar.gz
-WG_GO_HASH:=bd8c0794fea6c57a0d6f1b6813bed606a7c0896d3ded2bb7fe6e14ae8406d6c3
+WG_GO_HASH:=c5f3e4766d56e1f49f4b5fa07ec9ef3e85e3a0ce7b38797b0ad4bab033dd8b22
 
 GO_PKG:=github.com/PinkD/wireguard-go
 
@@ -70,7 +70,8 @@ define Build/Compile
 		$(GO_PKG_BUILD_CONFIG_VARS) \
 		$(GO_PKG_TARGET_VARS) \
 		$(GO_PKG_BUILD_VARS) \
-		go build -trimpath -buildmode=c-archive -o ../libwg.a ./libwg ; \
+		$(MAKE) libwg ; \
+		mv libwg.a libwg.h .. ; \
 	)
 	$(call Build/Compile/Cargo)
 endef
