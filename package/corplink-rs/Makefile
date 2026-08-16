@@ -4,7 +4,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=corplink-rs
 PKG_VERSION:=0.5.5
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_VERSION:=1ef93ae99be88951d9c0e7cc7b7e33b679fd5ed7
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
@@ -81,3 +81,7 @@ define Package/corplink-rs/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/bin/corplink-rs $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/etc/corplink
+	$(INSTALL_CONF) $(CURDIR)/files/config.json $(1)/etc/corplink/config.json
+endef
+
+$(eval $(call BuildPackage,corplink-rs))
