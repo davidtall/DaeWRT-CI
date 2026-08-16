@@ -64,13 +64,15 @@ define Build/Prepare
 endef
 
 define Build/Compile
+# The source is downloaded as a tarball, so wireguard-go cannot derive this from Git.
 	( \
 		cd $(PKG_BUILD_DIR)/libwg/wireguard-go ; \
+		printf 'package main\n\nconst Version = "%s"\n' "$(WG_GO_VERSION)" > version.go ; \
 		$(GO_GENERAL_BUILD_CONFIG_VARS) \
 		$(GO_PKG_BUILD_CONFIG_VARS) \
 		$(GO_PKG_TARGET_VARS) \
 		$(GO_PKG_BUILD_VARS) \
-		$(MAKE) libwg ; \
+		$(MAKE) libwg && \
 		mv libwg.a libwg.h .. ; \
 	)
 	$(call Build/Compile/Cargo)
