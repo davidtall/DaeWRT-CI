@@ -4,7 +4,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=corplink-rs
 PKG_VERSION:=0.5.5
-PKG_RELEASE:=2
+PKG_RELEASE:=4
 
 PKG_SOURCE_VERSION:=1ef93ae99be88951d9c0e7cc7b7e33b679fd5ed7
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
@@ -16,7 +16,7 @@ PKG_LICENSE:=GPL-2.0-or-later
 PKG_LICENSE_FILES:=license.txt
 PKG_MAINTAINER:=PinkD <443657547@qq.com>
 
-PKG_BUILD_DEPENDS:=golang/host rust/host
+PKG_BUILD_DEPENDS:=golang/host rust/host openssl
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
@@ -44,7 +44,7 @@ define Package/corplink-rs
   SUBMENU:=VPN
   TITLE:=Rust client for Volcengine Corplink VPN
   URL:=https://github.com/PinkD/corplink-rs
-  DEPENDS:=$(RUST_ARCH_DEPENDS) $(GO_ARCH_DEPENDS) +ca-bundle +kmod-tun
+  DEPENDS:=$(RUST_ARCH_DEPENDS) $(GO_ARCH_DEPENDS) +ca-bundle +kmod-tun +libopenssl
 endef
 
 define Package/corplink-rs/description
@@ -75,6 +75,10 @@ define Build/Compile
 		$(MAKE) libwg && \
 		mv libwg.a libwg.h .. ; \
 	)
+	# Some SDKs do not stage openssl.pc; point openssl-sys at the target SDK instead.
+	OPENSSL_DIR="$(STAGING_DIR)/usr" \
+	OPENSSL_LIB_DIR="$(STAGING_DIR)/usr/lib" \
+	OPENSSL_INCLUDE_DIR="$(STAGING_DIR)/usr/include" \
 	$(call Build/Compile/Cargo)
 endef
 
