@@ -1,0 +1,12 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+start() {
+    iptables -w 5 -C DOCKER-USER -i br-lan -o corplink0 -j ACCEPT 2>/dev/null || iptables -w 5 -I DOCKER-USER 1 -i br-lan -o corplink0 -j ACCEPT
+    /usr/bin/docker start corplink-rs
+    sleep 3
+    /mnt/mmcblk0p19/corplink/corplink-routes.sh
+
+}
