@@ -45,6 +45,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         dnsutils \
+        iptables \
         iproute2 \
         iputils-ping \
         libgcc-s1 \

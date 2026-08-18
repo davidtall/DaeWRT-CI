@@ -4,8 +4,16 @@ set -u
 KEEPALIVE_URL="${KEEPALIVE_URL:-}"
 KEEPALIVE_INTERVAL="${KEEPALIVE_INTERVAL:-300}"
 
+if [ "$(cat /proc/sys/net/ipv4/ip_forward)" != "1" ]; then
+    echo 1 > /proc/sys/net/ipv4/ip_forward \
+        || { echo "failed to enable IPv4 forwarding (NET_ADMIN required)" >&2; exit 1; }
+fi
+
 /usr/local/bin/corplink-rs "$@" &
 corplink_pid=$!
+
+# SNAT traffic forwarded from the Docker bridge into the VPN tunnel.
+iptables -t nat -A POSTROUTING -o corplink -j MASQUERADE
 
 cleanup() {
     kill -TERM "$corplink_pid" 2>/dev/null || true
