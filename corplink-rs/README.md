@@ -20,7 +20,7 @@ docker run -d \
 --cap-add NET_RAW \
 --device /dev/net/tun \
 --sysctl net.ipv4.ip_forward=1 \
--e KEEPALIVE_URL='https://ops.qima-inc.com' \
+-e KEEPALIVE_URL='' \
 -e KEEPALIVE_INTERVAL=60 \
 -v "$PWD/corplink:/etc/corplink" \
 corplink-rs:arm64
