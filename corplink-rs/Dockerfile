@@ -43,13 +43,19 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bash \
         ca-certificates \
+        curl \
+        dnsutils \
         iproute2 \
         iputils-ping \
         libgcc-s1 \
         libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /etc/corplink
 COPY --from=builder /src/corplink-rs/target/release/corplink-rs /usr/local/bin/corplink-rs
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/corplink-rs"]
-CMD ["/etc/corplink/config.json"]
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["config.json"]
