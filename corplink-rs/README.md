@@ -49,10 +49,21 @@ docker logs corplink-rs
 iptables -I DOCKER-USER 1 -i br-lan -o corplink0 -j ACCEPT
 
 #设置mtu
-mkdir -p /usr/share/nftables.d/chain-pre/mangle_forward
+/etc/nftables.d/90-corplink-mss.nft
+```
+chain corplink_mss_clamp {
+    type filter hook forward priority -151; policy accept;
 
-printf '%s\n' \
-'iifname "br-lan" oifname "corplink0" tcp flags syn / syn,fin,rst tcp option maxseg size set 1360 comment "!user: Clamp LAN to CorpLink TCP MSS"' \
-> /usr/share/nftables.d/chain-pre/mangle_forward/90-corplink-mss.nft
+    iifname "br-lan" oifname "corplink0" \
+        tcp flags syn / syn,fin,rst \
+        tcp option maxseg size set 1360 \
+        comment "!user: Clamp LAN to CorpLink TCP MSS"
+}
 
+```
 fw4 check && /etc/init.d/firewall reload
+#保留升级时保留文件
+echo '/etc/nftables.d/90-corplink-mss.nft' >> /etc/sysupgrade.conf
+
+echo '/etc/init.d/zz-corplink-docker-user' >> /etc/sysupgrade.conf
+echo '/etc/rc.d/S99zz-corplink-docker-user' >> /etc/sysupgrade.conf

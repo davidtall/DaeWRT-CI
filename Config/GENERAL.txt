@@ -16,7 +16,7 @@ CONFIG_PACKAGE_luci-app-zerotier=y
 CONFIG_PACKAGE_luci-app-vlmcsd=y
 #CONFIG_PACKAGE_luci-app-ttyd=y
 CONFIG_PACKAGE_luci-app-cpufreq=y
-#CONFIG_PACKAGE_luci-app-nginx-manager=y
+CONFIG_PACKAGE_luci-app-nginx-manager=y
 #删除插件
 CONFIG_PACKAGE_luci-app-attendedsysupgrade=n
 CONFIG_PACKAGE_luci-app-wol=n
