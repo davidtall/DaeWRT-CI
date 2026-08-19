@@ -1,33 +1,34 @@
-
+## 编译镜像
 如果在 AMD64 电脑上为 ARM64 OpenWrt 构建，先启用模拟器：
 docker run --privileged --rm tonistiigi/binfmt --install arm64
 docker buildx build --platform linux/arm64 --load -t corplink-rs:arm64 .
 
-#导出镜像
+## 导出镜像
 docker save -o corplink-rs-arm64.tar corplink-rs:arm64
-#导入镜像
+## 导入镜像
 docker load -i corplink-rs-arm64.tar
 
-删除旧的网桥
+## 删除旧的网桥
 docker network rm corplink-net
-#创建docker 网络
 
+## 创建docker 网络
+```
 docker network create \
 --driver bridge \
 --subnet 172.30.0.0/24 \
 --gateway 172.30.0.1 \
 -o com.docker.network.bridge.name=corplink0 \
 corplink-net
+```
 
-docker network create \
---driver bridge \
---subnet 172.30.0.0/24 \
---gateway 172.30.0.1 \
-corplink-net
 
-docker network create --subnet 172.30.0.0/24 corplink-net
 
-#启动容器
+## 启动容器
+```
+//删除容器
+docker stop corplink-rs && docker rm corplink-rs
+
+//创建容器
 docker run -d \
 --name corplink-rs \
 --network corplink-net \
@@ -41,14 +42,14 @@ docker run -d \
 -v "$PWD/etc:/etc/corplink" \
 corplink-rs:arm64
 
+```
 
-docker stop corplink-rs && docker rm corplink-rs
 docker logs corplink-rs
 
-#宿主机设置
+## 宿主机放行br-lan 到 corplink0 访问
 iptables -I DOCKER-USER 1 -i br-lan -o corplink0 -j ACCEPT
 
-#设置mtu
+## 设置mtu
 /etc/nftables.d/90-corplink-mss.nft
 ```
 chain corplink_mss_clamp {
@@ -62,8 +63,10 @@ chain corplink_mss_clamp {
 
 ```
 fw4 check && /etc/init.d/firewall reload
-#保留升级时保留文件
+
+## 保留升级时保留文件
 echo '/etc/nftables.d/90-corplink-mss.nft' >> /etc/sysupgrade.conf
 
 echo '/etc/init.d/zz-corplink-docker-user' >> /etc/sysupgrade.conf
+
 echo '/etc/rc.d/S99zz-corplink-docker-user' >> /etc/sysupgrade.conf
