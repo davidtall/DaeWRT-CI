@@ -21,8 +21,6 @@ docker network create \
 corplink-net
 ```
 
-
-
 ## 启动容器
 ```
 //删除容器
@@ -42,16 +40,25 @@ docker run -d \
 -v "$PWD/etc:/etc/corplink" \
 corplink-rs:arm64
 
+//查看容器日志
+docker logs corplink-rs
 ```
 
-docker logs corplink-rs
+## 同步VPN路由到宿主机
+```
+cd corplink-rs
+chmod +x ./corplink-routes.sh
+./corplink-routes.sh
+```
 
 ## 宿主机放行br-lan 到 corplink0 访问
 iptables -I DOCKER-USER 1 -i br-lan -o corplink0 -j ACCEPT
 
 ## 设置mtu
-/etc/nftables.d/90-corplink-mss.nft
+
 ```
+vim /etc/nftables.d/90-corplink-mss.nft
+//增加以下内容
 chain corplink_mss_clamp {
     type filter hook forward priority -151; policy accept;
 
@@ -61,12 +68,14 @@ chain corplink_mss_clamp {
         comment "!user: Clamp LAN to CorpLink TCP MSS"
 }
 
-```
+//重启防火墙
 fw4 check && /etc/init.d/firewall reload
+```
+
 
 ## 保留升级时保留文件
+```
 echo '/etc/nftables.d/90-corplink-mss.nft' >> /etc/sysupgrade.conf
-
 echo '/etc/init.d/zz-corplink-docker-user' >> /etc/sysupgrade.conf
-
 echo '/etc/rc.d/S99zz-corplink-docker-user' >> /etc/sysupgrade.conf
+```
