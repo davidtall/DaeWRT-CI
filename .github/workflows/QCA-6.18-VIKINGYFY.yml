@@ -22,7 +22,7 @@ on:
         type: boolean
       USE_QIUSIMONS_DAE_MAKEFILE:
         description: '使用 QiuSimons dae/Makefile'
-        default: true
+        default: false
         required: false
         type: boolean
 
