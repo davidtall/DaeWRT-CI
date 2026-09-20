@@ -40,10 +40,6 @@ on:
       WRT_TEST:
         required: false
         type: string
-      USE_QIUSIMONS_DAE_MAKEFILE:
-        required: false
-        default: false
-        type: boolean
       CI_NAME:
         required: false
         type: string
@@ -63,7 +59,6 @@ env:
   WRT_BRANCH: ${{inputs.WRT_BRANCH}}
   WRT_PACKAGE: ${{inputs.WRT_PACKAGE}}
   WRT_TEST: ${{inputs.WRT_TEST}}
-  USE_QIUSIMONS_DAE_MAKEFILE: ${{inputs.USE_QIUSIMONS_DAE_MAKEFILE}}
   WRT_DIR: 'wrt'
   CI_NAME: ${{inputs.CI_NAME}}
   WRT_ARCH: ${{inputs.WRT_ARCH}}

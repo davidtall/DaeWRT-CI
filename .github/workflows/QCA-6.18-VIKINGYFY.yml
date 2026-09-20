@@ -20,11 +20,6 @@ on:
         default: 'false'
         required: false
         type: boolean
-      USE_QIUSIMONS_DAE_MAKEFILE:
-        description: '使用 QiuSimons dae/Makefile'
-        default: false
-        required: false
-        type: boolean
 
 #CI权限
 permissions: write-all
@@ -69,7 +64,5 @@ jobs:
       WRT_PACKAGE: ${{inputs.PACKAGE}}
       #仅输出配置文件
       WRT_TEST: ${{inputs.TEST}}
-      #是否替换 luci-app-dae 的 Makefile
-      USE_QIUSIMONS_DAE_MAKEFILE: ${{inputs.USE_QIUSIMONS_DAE_MAKEFILE || false}}
 
       CI_NAME: ${{github.workflow}}

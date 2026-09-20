@@ -74,7 +74,7 @@ UPDATE_PACKAGE "netwizard" "sirpdboy/luci-app-netwizard" "main"
 UPDATE_PACKAGE "openlist2" "sbwml/luci-app-openlist2" "main"
 UPDATE_PACKAGE "partexp" "sirpdboy/luci-app-partexp" "main"
 UPDATE_PACKAGE "qbittorrent" "sbwml/luci-app-qbittorrent" "master" "" "qt6base qt6tools rblibtorrent"
-UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main"
+#UPDATE_PACKAGE "qmodem" "FUjr/QModem" "main"
 UPDATE_PACKAGE "quickfile" "sbwml/luci-app-quickfile" "main"
 UPDATE_PACKAGE "timecontrol" "sirpdboy/luci-app-timecontrol" "main"
 UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "axonhub gecoosac sing-box luci-app-homeproxy luci-app-timewol luci-app-wolplus luci-app-wolultra"
@@ -82,7 +82,7 @@ UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 
 
 UPDATE_PACKAGE "luci-app-daed" "QiuSimons/luci-app-daed" "kix"
-UPDATE_PACKAGE "luci-app-dae" "davidtall/luci-app-dae" "kix"
+UPDATE_PACKAGE "luci-app-dae" "davidtall/luci-app-dae" "main"
 UPDATE_PACKAGE "luci-app-pushbot" "zzsj0928/luci-app-pushbot" "master"
 UPDATE_PACKAGE "luci-app-nginx-manager" "hello-yunshu/luci-app-nginx-manager" "main"
 #UPDATE_PACKAGE "luci-app-dockerman" "lisaac/luci-app-dockerman" "master"
@@ -142,12 +142,6 @@ rm -rf ../feeds/packages/net/{v2ray-geodata,dae*}
 
 cp -r $GITHUB_WORKSPACE/package/v2ray-geodata ./
 
-if [[ "${USE_QIUSIMONS_DAE_MAKEFILE,,}" == "true" ]]; then
-	git clone --depth=1 --single-branch --branch kix "https://github.com/QiuSimons/luci-app-dae.git" luci-app-dae-QiuSimons
-	rm -rf luci-app-dae/dae/Makefile && cp -r luci-app-dae-QiuSimons/dae/Makefile luci-app-dae/dae/
-	rm -rf luci-app-dae-QiuSimons
-	cat luci-app-dae/dae/Makefile
-fi
 
 #修复daed/Makefile
 #rm -rf luci-app-daed/daed/Makefile && cp -r $GITHUB_WORKSPACE/patches/daed/Makefile luci-app-daed/daed/
